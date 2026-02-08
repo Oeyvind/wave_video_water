@@ -1,6 +1,6 @@
 import cv2
 from video_capture import get_frame
-from wave_analysis import analyze_direction, analyze_frequencies
+from wave_analysis import analyze_direction, analyze_frequencies, analyze_spatial_frequencies
 from osc_sender import send_wave_data
 from spectrum_plot import render_spectrum_overlay
 
@@ -32,6 +32,7 @@ while True:
     if prev_gray is not None and len(intensity_series) >= max_len:
         direction = analyze_direction(prev_gray, gray_small)
         freqs = analyze_frequencies(intensity_series, fps)
+        spatial_freqs = analyze_spatial_frequencies(gray)
         send_wave_data(freqs, direction)
         render_spectrum_overlay(
             frame,
@@ -42,6 +43,7 @@ while True:
                 "mid": freqs["mid"],
                 "high": freqs["high"],
             },
+            spatial_freqs=spatial_freqs,
             show_spectrogram=show_spectrogram,
             show_summary=show_summary,
         )
