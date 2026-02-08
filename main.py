@@ -45,6 +45,11 @@ while True:
             show_spectrogram=show_spectrogram,
             show_summary=show_summary,
         )
+    elif len(intensity_series) < max_len:
+        # Show startup message while buffer is filling
+        progress = len(intensity_series) / max_len
+        msg = f"Data analysis starting up... {int(progress * 100)}%"
+        cv2.putText(frame, msg, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
     prev_gray = gray_small.copy()
     cv2.imshow("Wave Analyzer", frame)

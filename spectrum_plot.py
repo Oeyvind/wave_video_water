@@ -8,7 +8,7 @@ _BANDS = [
 ]
 
 def render_spectrum_overlay(frame, xf, yf, peaks, show_spectrogram=True, show_summary=True,
-                            max_freq=5.0, size=(360, 200), alpha=0.6, margin=12):
+                            max_freq=5.0, size=(360, 250), alpha=0.6, margin=12):
     if not show_spectrogram and not show_summary:
         return frame
 
@@ -23,7 +23,7 @@ def render_spectrum_overlay(frame, xf, yf, peaks, show_spectrogram=True, show_su
     panel = np.zeros((box_h, box_w, 3), dtype=np.uint8)
     panel[:] = (20, 20, 20)
 
-    pad_l, pad_r, pad_t, pad_b = 30, 10, 10, 34
+    pad_l, pad_r, pad_t, pad_b = 30, 10, 10, 80
     plot_w = max(1, box_w - pad_l - pad_r)
     plot_h = max(1, box_h - pad_t - pad_b)
 
