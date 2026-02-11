@@ -1,9 +1,9 @@
 import cv2
 import os
+import numpy as np
 from pathlib import Path
 from video_capture import get_frame
-from wave_analysis import analyze_direction, analyze_frequencies, analyze_spatial_frequencies
-from osc_sender import send_wave_data
+from wave_analysis import analyze_direction, analyze_spatial_frequencies
 from spectrum_plot import render_spectrum_overlay
 
 
@@ -59,8 +59,6 @@ show_summary = True
 fps = cap.get(cv2.CAP_PROP_FPS) or 30
 print(f"Video FPS: {fps:.2f}")
 prev_gray = None
-intensity_series = []
-max_len = 128
 
 while True:
     result = get_frame(cap)
@@ -69,35 +67,18 @@ while True:
     frame, gray = result
     gray_small = cv2.resize(gray, (160, 120))
 
-    roi = gray[100:110, :]
-    avg_intensity = roi.mean()
-    intensity_series.append(avg_intensity)
-    if len(intensity_series) > max_len:
-        intensity_series.pop(0)
-
-    if prev_gray is not None and len(intensity_series) >= max_len:
+    if prev_gray is not None:
         direction = analyze_direction(prev_gray, gray_small)
-        freqs = analyze_frequencies(intensity_series, fps)
         spatial_freqs = analyze_spatial_frequencies(gray)
-        send_wave_data(freqs, direction)
         render_spectrum_overlay(
             frame,
-            freqs["xf"],
-            freqs["yf"],
-            {
-                "low": freqs["low"],
-                "mid": freqs["mid"],
-                "high": freqs["high"],
-            },
+            np.array([]),  # xf (empty, no temporal freq)
+            np.array([]),  # yf (empty, no temporal freq)
+            {},            # peaks (empty, no temporal freq)
             spatial_freqs=spatial_freqs,
-            show_spectrogram=show_spectrogram,
+            show_spectrogram=True,  # Show spatial spectrum
             show_summary=show_summary,
         )
-    elif len(intensity_series) < max_len:
-        # Show startup message while buffer is filling
-        progress = len(intensity_series) / max_len
-        msg = f"Data analysis starting up... {int(progress * 100)}%"
-        cv2.putText(frame, msg, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
     prev_gray = gray_small.copy()
     cv2.imshow("Wave Analyzer", frame)

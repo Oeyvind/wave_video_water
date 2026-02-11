@@ -1,0 +1,7 @@
+* Draw mask to limit the analysis area, on startup
+* Possible to save the mask with the video file
+* Filter video to diminish slow changes and static objects, also sharpen.
+  - this is in water slits3 correlate
+* Make 4 display panels. 
+  - original video, filtered, fft zoomed in, and use the 4 panel to display data values
+* Add autocorrelation to detect wave direction and further frequency analysis

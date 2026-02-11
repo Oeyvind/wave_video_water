@@ -38,12 +38,18 @@ def analyze_spatial_frequencies(gray_frame):
     """Analyze spatial frequency (wave crests visible horizontally in frame)"""
     # Sample a horizontal stripe from the middle of the frame
     h, w = gray_frame.shape
-    roi = gray_frame[h // 2 : h // 2 + 1, :].flatten()
+    roi = gray_frame[h // 2 : h // 2 + 1, :].flatten().astype(np.float32)
     
-    signal = roi.astype(np.float32) - np.mean(roi)
+    # Remove DC component
+    roi_mean = np.mean(roi)
+    signal = roi - roi_mean
+    
     N = len(signal)
     yf = np.abs(rfft(signal))
     xf = rfftfreq(N, 1.0)  # Normalized spatial frequency (cycles per pixel)
+    
+    # Replace any NaN values with 0
+    yf = np.nan_to_num(yf, nan=0.0, posinf=0.0, neginf=0.0)
     
     def centroid_band(fmin_cycles, fmax_cycles):
         """fmin_cycles and fmax_cycles are in cycles per frame width"""
