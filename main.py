@@ -1,11 +1,57 @@
 import cv2
+import os
+from pathlib import Path
 from video_capture import get_frame
 from wave_analysis import analyze_direction, analyze_frequencies, analyze_spatial_frequencies
 from osc_sender import send_wave_data
 from spectrum_plot import render_spectrum_overlay
 
-#cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture("../wave_video_files/dokkpark_2025_10.mp4")
+
+def select_video_source():
+    """
+    Present a menu to select video source: live camera or a video file from ../wave_video_files/
+    Returns the video source (0 for camera, or file path for video)
+    """
+    video_dir = Path("../wave_video_files/")
+    
+    # Get list of video files
+    video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'}
+    video_files = sorted([
+        f for f in os.listdir(video_dir) 
+        if os.path.isfile(video_dir / f) and Path(f).suffix.lower() in video_extensions
+    ])
+    
+    print("\n" + "="*50)
+    print("VIDEO SOURCE SELECTION")
+    print("="*50)
+    print("\n0. Live Camera (Webcam)")
+    
+    for i, video_file in enumerate(video_files, start=1):
+        print(f"{i}. {video_file}")
+    
+    print("\n" + "-"*50)
+    while True:
+        try:
+            choice = input("Select video source (0 for camera, or enter number): ").strip()
+            choice_num = int(choice)
+            
+            if choice_num == 0:
+                print("\nUsing live camera (index 0)...\n")
+                return 0
+            elif 1 <= choice_num <= len(video_files):
+                selected_file = video_files[choice_num - 1]
+                file_path = str(video_dir / selected_file)
+                print(f"\nUsing video file: {selected_file}\n")
+                return file_path
+            else:
+                print(f"Invalid choice. Please enter 0-{len(video_files)}")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+
+# Get video source from user selection
+video_source = select_video_source()
+cap = cv2.VideoCapture(video_source)
 step = False
 show_spectrogram = True
 show_summary = True
