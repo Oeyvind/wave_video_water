@@ -1,3 +1,13 @@
+* Sonification concept:
+  - granular processing of live input
+  - grain size set by wave size
+    - grain rate by wave frequency
+    - grain duration by 1/w-freq, and/or wave diffusion pattern (gray/clear)
+    - could also use blob size of wave patterns (open cv contour)
+  - high/low from up/down (grain transpose, or just multiband)
+  - left/right movement of grains or within each grain: from wave direction
+  - left/right position from wave pattern location laft/right: split into 4 zones(?)
+
 * Draw mask to limit the analysis area, on startup
 * Possible to save the mask with the video file
 * Filter video to diminish slow changes and static objects, also sharpen.

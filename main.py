@@ -12,7 +12,7 @@ def select_video_source():
     Present a menu to select video source: live camera or a video file from ../wave_video_files/
     Returns the video source (0 for camera, or file path for video)
     """
-    video_dir = Path("../wave_video_files/")
+    video_dir = Path("C:\Projects\efx_experiments\wave_video_files")
     
     # Get list of video files
     video_extensions = {'.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'}
