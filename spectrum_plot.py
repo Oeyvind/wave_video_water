@@ -13,6 +13,22 @@ _BANDS_SPATIAL = [
     (8.0, 20.0, (60, 80, 200), "high"),
 ]
 
+
+def _put_text_with_bg(img, text, org, font_scale=0.45, color=(240, 240, 240), thickness=1, alpha=0.45):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    (tw, th), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    x, y = int(org[0]), int(org[1])
+    pad = 3
+    x0 = max(0, x - pad)
+    y0 = max(0, y - th - pad)
+    x1 = min(img.shape[1], x + tw + pad)
+    y1 = min(img.shape[0], y + baseline + pad)
+    if x1 > x0 and y1 > y0:
+        overlay = img.copy()
+        cv2.rectangle(overlay, (x0, y0), (x1, y1), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, alpha, img, 1.0 - alpha, 0, img)
+    cv2.putText(img, text, (x, y), font, font_scale, color, thickness, cv2.LINE_AA)
+
 def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spectrogram=True, show_summary=True,
                             max_freq=5.0, size=(360, 250), alpha=0.6, margin=12):
     # Skip temporal panel if no temporal data provided
@@ -60,16 +76,16 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
                 if len(points) >= 2:
                     cv2.polylines(panel, [np.array(points, dtype=np.int32)], False, (240, 240, 240), 1)
 
-            cv2.putText(panel, "0", (pad_l - 8, pad_t + plot_h + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (220, 220, 220), 1)
-            cv2.putText(panel, f"{max_freq:.1f}Hz", (pad_l + plot_w - 32, pad_t + plot_h + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (220, 220, 220), 1)
-            cv2.putText(panel, "Temporal", (pad_l, pad_t - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (200, 200, 200), 1)
+            _put_text_with_bg(panel, "0", (pad_l - 8, pad_t + plot_h + 16), font_scale=0.4, color=(220, 220, 220))
+            _put_text_with_bg(panel, f"{max_freq:.1f}Hz", (pad_l + plot_w - 32, pad_t + plot_h + 16), font_scale=0.4, color=(220, 220, 220))
+            _put_text_with_bg(panel, "Temporal", (pad_l, pad_t - 2), font_scale=0.35, color=(200, 200, 200))
 
         if show_summary:
             text_y = pad_t + plot_h + 28
             for fmin, fmax, color, label in _BANDS_TEMPORAL:
                 peak = float(peaks.get(label, 0.0)) if peaks else 0.0
                 text = f"{label}: {peak:.2f}Hz"
-                cv2.putText(panel, text, (8, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (240, 240, 240), 1)
+                _put_text_with_bg(panel, text, (8, text_y), font_scale=0.45, color=(240, 240, 240))
                 text_y += 14
 
         roi = frame[y0:y0 + box_h, x0:x0 + box_w]
@@ -126,16 +142,16 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
                         if len(points) >= 2:
                             cv2.polylines(spatial_panel, [np.array(points, dtype=np.int32)], False, (240, 240, 240), 1)
 
-                cv2.putText(spatial_panel, "0", (pad_l - 8, pad_t + plot_h + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (220, 220, 220), 1)
-                cv2.putText(spatial_panel, f"{max_spatial_freq:.0f}c/f", (pad_l + plot_w - 50, pad_t + plot_h + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (220, 220, 220), 1)
-                cv2.putText(spatial_panel, "Spatial", (pad_l, pad_t - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (200, 200, 200), 1)
+                _put_text_with_bg(spatial_panel, "0", (pad_l - 8, pad_t + plot_h + 16), font_scale=0.4, color=(220, 220, 220))
+                _put_text_with_bg(spatial_panel, f"{max_spatial_freq:.0f}c/f", (pad_l + plot_w - 50, pad_t + plot_h + 16), font_scale=0.4, color=(220, 220, 220))
+                _put_text_with_bg(spatial_panel, "Spatial", (pad_l, pad_t - 2), font_scale=0.35, color=(200, 200, 200))
 
             if show_summary:
                 text_y = pad_t + plot_h + 28
                 for fmin, fmax, color, label in _BANDS_SPATIAL:
                     peak = float(spatial_freqs.get(label, 0.0)) if spatial_freqs else 0.0
                     text = f"{label}: {peak:.2f}c/f"
-                    cv2.putText(spatial_panel, text, (8, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (240, 240, 240), 1)
+                    _put_text_with_bg(spatial_panel, text, (8, text_y), font_scale=0.45, color=(240, 240, 240))
                     text_y += 14
 
             roi = frame[y0:y0 + spatial_box_h, x0:x0 + box_w]
