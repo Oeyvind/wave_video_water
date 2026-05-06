@@ -1,3 +1,4 @@
+import ctypes
 import json
 import os
 import time
@@ -14,18 +15,13 @@ from wave_analysis import WaveAnalyzer
 
 
 DISPLAY_MODES = [
+    "filtered",
     "raw",
-    "mask",
-    "threshold",
-    "contours",
-    "flow",
-    "spectra",
-    "hud",
 ]
 
 
 def focus_window(window_name):
-    """Best-effort focus/topmost nudge for the OpenCV window on startup."""
+    """Bring the OpenCV window to front and give it real keyboard focus."""
     try:
         cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
         # Show a tiny bootstrap frame so the window is materialized before focus.
@@ -35,7 +31,29 @@ def focus_window(window_name):
         cv2.waitKey(1)
         cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 0)
     except cv2.error:
-        # Some backends do not support topmost property; ignore safely.
+        pass
+
+    # On Windows, SetForegroundWindow silently fails unless the calling process
+    # already owns the foreground. The reliable workaround is AttachThreadInput:
+    # attach to the foreground window's thread, steal focus, then detach.
+    try:
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hwnd = user32.FindWindowW(None, window_name)
+        if hwnd:
+            fg_hwnd = user32.GetForegroundWindow()
+            fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None)
+            our_tid = kernel32.GetCurrentThreadId()
+            attached = False
+            if fg_tid and fg_tid != our_tid:
+                user32.AttachThreadInput(fg_tid, our_tid, True)
+                attached = True
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+            user32.SetFocus(hwnd)
+            if attached:
+                user32.AttachThreadInput(fg_tid, our_tid, False)
+    except Exception:
         pass
 
 
@@ -96,6 +114,19 @@ def draw_text_block(
             x = x0 + pad
         cv2.putText(frame, line, (x, y), font, font_scale, color, thickness, cv2.LINE_AA)
         y += line_height + line_gap
+
+    return x0, y0, block_width, block_height
+
+
+def measure_text_block(lines, font_scale=0.5, thickness=1, pad=8, line_gap=6):
+    if not lines:
+        return 0, 0
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_sizes = [cv2.getTextSize(line, font, font_scale, thickness)[0] for line in lines]
+    line_height = max(size[1] for size in text_sizes)
+    block_width = max(size[0] for size in text_sizes) + (pad * 2)
+    block_height = (pad * 2) + (line_height * len(lines)) + (line_gap * (len(lines) - 1))
+    return block_width, block_height
 
 
 def select_video_source():
@@ -187,24 +218,6 @@ def draw_status_hud(
     hud = frame.copy()
     color = (235, 235, 235)
 
-    top_left_lines = [
-        f"mode: {mode_name}",
-        f"quality preset: {quality_idx + 1}",
-    ]
-    if editing_mask:
-        next_corner = pending_corners[0] if pending_corners else "done"
-        top_left_lines.append(f"mask edit: click {next_corner} corner")
-    draw_text_block(
-        hud,
-        top_left_lines,
-        10,
-        10,
-        anchor="top_left",
-        font_scale=0.52,
-        thickness=1,
-        color=color,
-    )
-
     smooth = analysis["smoothed"]
     timing = analysis["timings"]
     signal_lines = [
@@ -231,6 +244,7 @@ def draw_status_hud(
         f"effective fps: {perf_stats['effective_fps']:.2f}",
         f"processing fps: {perf_stats['processing_fps']:.2f}",
         f"playback ratio: {perf_stats['playback_ratio_pct']:.1f}%",
+        f"temp {('on' if switches['temporal_filter'] else 'off')} | screen {('on' if switches['screen_blend'] else 'off')} | blur {('on' if switches['pre_blur'] else 'off')}",
         f"flow detail: {switches['flow_detail_mode']}",
         f"flow: every {switches['flow_interval']} frame(s)",
     ]
@@ -238,47 +252,40 @@ def draw_status_hud(
     top_cpu = profile_stats.get("top_cpu_stage", "n/a")
     top_cpu_pct = profile_stats.get("top_cpu_pct", 0.0)
     perf_lines.append(f"top cpu: {top_cpu} ({top_cpu_pct:.1f}%)")
-    draw_text_block(
-        hud,
-        perf_lines,
-        hud.shape[1] - 10,
-        hud.shape[0] - 10,
-        anchor="bottom_right",
-        font_scale=0.52,
-        thickness=1,
-        color=color,
-        right_align=True,
-    )
+    perf_w, perf_h = measure_text_block(perf_lines, font_scale=0.48, thickness=1, pad=8, line_gap=6)
 
     profile_lines = [
         "CPU Stage Profile (avg ms | share)",
-        f"capture  {profile_stats['capture_ms']:.2f} | {profile_stats['capture_pct']:.1f}%",
-        f"preproc  {profile_stats['preprocess_ms']:.2f} | {profile_stats['preprocess_pct']:.1f}%",
-        f"contours {profile_stats['contours_ms']:.2f} | {profile_stats['contours_pct']:.1f}%",
-        f"slits    {profile_stats['slits_ms']:.2f} | {profile_stats['slits_pct']:.1f}%",
-        f"flow     {profile_stats['flow_ms']:.2f} | {profile_stats['flow_pct']:.1f}%",
-        f"fusion   {profile_stats['fusion_ms']:.2f} | {profile_stats['fusion_pct']:.1f}%",
-        f"render   {profile_stats['render_ms']:.2f} | {profile_stats['render_pct']:.1f}%",
-        f"osc      {profile_stats['osc_ms']:.2f} | {profile_stats['osc_pct']:.1f}%",
-        f"waitKey  {profile_stats['wait_ms']:.2f} | {profile_stats['wait_pct']:.1f}%",
-        f"loop     {profile_stats['loop_ms']:.2f} | 100.0%",
+        f"capture  {profile_stats.get('capture_ms', 0.0):.2f} | {profile_stats.get('capture_pct', 0.0):.1f}%",
+        f"preproc  {profile_stats.get('preprocess_ms', 0.0):.2f} | {profile_stats.get('preprocess_pct', 0.0):.1f}%",
+        f"temporal {profile_stats.get('temporal_filter_ms', 0.0):.2f} | {profile_stats.get('temporal_filter_pct', 0.0):.1f}%",
+        f"tdiff    {profile_stats.get('temporal_diff_ms', 0.0):.2f} | {profile_stats.get('temporal_diff_pct', 0.0):.1f}%",
+        f"screen   {profile_stats.get('screen_blend_ms', 0.0):.2f} | {profile_stats.get('screen_blend_pct', 0.0):.1f}%",
+        f"blur     {profile_stats.get('pre_blur_ms', 0.0):.2f} | {profile_stats.get('pre_blur_pct', 0.0):.1f}%",
+        f"contours {profile_stats.get('contours_ms', 0.0):.2f} | {profile_stats.get('contours_pct', 0.0):.1f}%",
+        f"slits    {profile_stats.get('slits_ms', 0.0):.2f} | {profile_stats.get('slits_pct', 0.0):.1f}%",
+        f"flow     {profile_stats.get('flow_ms', 0.0):.2f} | {profile_stats.get('flow_pct', 0.0):.1f}%",
+        f"fusion   {profile_stats.get('fusion_ms', 0.0):.2f} | {profile_stats.get('fusion_pct', 0.0):.1f}%",
+        f"render   {profile_stats.get('render_ms', 0.0):.2f} | {profile_stats.get('render_pct', 0.0):.1f}%",
+        f"osc      {profile_stats.get('osc_ms', 0.0):.2f} | {profile_stats.get('osc_pct', 0.0):.1f}%",
+        f"waitKey  {profile_stats.get('wait_ms', 0.0):.2f} | {profile_stats.get('wait_pct', 0.0):.1f}%",
+        f"loop     {profile_stats.get('loop_ms', 0.0):.2f} | 100.0%",
     ]
-    draw_text_block(
-        hud,
-        profile_lines,
-        hud.shape[1] - 10,
-        hud.shape[0] - 150,
-        anchor="bottom_right",
-        font_scale=0.44,
-        thickness=1,
-        color=color,
-        right_align=True,
-    )
+    profile_w, profile_h = measure_text_block(profile_lines, font_scale=0.42, thickness=1, pad=8, line_gap=6)
 
     legend_lines = [
         "Keys",
         f"[D] mode: {mode_name}",
         f"[1..4] quality: {quality_idx + 1}",
+        f"[T] temporal: {'on' if switches['temporal_filter'] else 'off'}",
+        f"[H] temporal diff: {'on' if switches['temporal_diff_filter'] else 'off'}",
+        f"[G] tdiff polarity: {switches['temporal_diff_polarity']}",
+        f"[E] screen: {'on' if switches['screen_blend'] else 'off'}",
+        f"[B] blur: {'on' if switches['pre_blur'] else 'off'}",
+        f"[R] threshold overlay: {'on' if switches['threshold_overlay'] else 'off'}",
+        f"[C] contour overlay: {'on' if switches['contour_overlay'] else 'off'}",
+        f"[S] spectrum overlay (tap@blur): {'on' if switches['spectrum_overlay'] else 'off'}",
+        f"[V] flow overlay (tap@blur): {'on' if switches['flow_overlay'] else 'off'}",
         f"[F] flow detail: {switches['flow_detail_mode']}",
         f"flow cadence: 1/{switches['flow_interval']}",
         f"[M] show mask: {'on' if switches['show_mask'] else 'off'}",
@@ -288,12 +295,40 @@ def draw_status_hud(
         "[Shift+L] save mask",
         "[P] pause  [Q] quit",
     ]
-    draw_text_block(
+    legend_box = draw_text_block(
         hud,
         legend_lines,
         hud.shape[1] - 10,
         10,
         anchor="top_right",
+        font_scale=0.48,
+        thickness=1,
+        color=color,
+        right_align=True,
+    )
+
+    legend_bottom = legend_box[1] + legend_box[3]
+    perf_top_y = hud.shape[0] - perf_h - 10
+    profile_top_y = min(legend_bottom + 8, max(legend_bottom + 8, perf_top_y - profile_h - 8))
+
+    draw_text_block(
+        hud,
+        profile_lines,
+        hud.shape[1] - 10,
+        profile_top_y,
+        anchor="top_right",
+        font_scale=0.42,
+        thickness=1,
+        color=color,
+        right_align=True,
+    )
+
+    draw_text_block(
+        hud,
+        perf_lines,
+        hud.shape[1] - 10,
+        hud.shape[0] - 10,
+        anchor="bottom_right",
         font_scale=0.48,
         thickness=1,
         color=color,
@@ -390,32 +425,37 @@ def draw_quadrant_flow_arrows(frame, flow):
     return out
 
 
-def make_display_frame(base_frame, analysis, mode_name, analyzer):
-    if mode_name == "raw":
-        return base_frame.copy()
+def make_display_frame(
+    base_frame,
+    analysis,
+    mode_name,
+    analyzer,
+    threshold_overlay,
+    contour_overlay,
+    flow_overlay,
+    spectrum_overlay,
+):
+    if mode_name == "filtered":
+        # Show the exact grayscale signal used for threshold/contour/spectral/flow taps.
+        out = cv2.cvtColor(analysis["preprocess_display"], cv2.COLOR_GRAY2BGR)
+    else:
+        out = base_frame.copy()
 
-    if mode_name == "mask":
-        mask_rgb = cv2.cvtColor(analysis["mask"], cv2.COLOR_GRAY2BGR)
-        return cv2.addWeighted(base_frame, 0.6, mask_rgb, 0.4, 0)
-
-    if mode_name == "threshold":
+    if threshold_overlay:
         thr_rgb = cv2.cvtColor(analysis["threshold"], cv2.COLOR_GRAY2BGR)
         edge_rgb = cv2.cvtColor(analysis["edges"], cv2.COLOR_GRAY2BGR)
         merged = cv2.addWeighted(thr_rgb, 0.7, edge_rgb, 0.3, 0)
-        return cv2.addWeighted(base_frame, 0.3, merged, 0.7, 0)
+        # Keep a faint view of the base signal, but make binary threshold dominant.
+        out = cv2.addWeighted(out, 0.2, merged, 0.8, 0)
 
-    if mode_name == "contours":
-        out = base_frame.copy()
+    if contour_overlay:
         cv2.drawContours(out, analysis["contours"], -1, (30, 250, 70), 2)
-        return out
 
-    if mode_name == "flow":
-        out = draw_flow_overlay(base_frame, analyzer.last_flow)
+    if flow_overlay:
+        out = draw_flow_overlay(out, analyzer.last_flow)
         out = draw_quadrant_flow_arrows(out, analyzer.last_flow)
-        return out
 
-    if mode_name == "spectra":
-        out = base_frame.copy()
+    if spectrum_overlay:
         slit = analysis["slit_data"]
         spatial_freqs = {
             "low": slit["band_low"] * 20.0,
@@ -436,10 +476,10 @@ def make_display_frame(base_frame, analysis, mode_name, analyzer):
             spatial_freqs=spatial_freqs,
             show_spectrogram=True,
             show_summary=True,
+            side="left",
         )
-        return out
 
-    return base_frame.copy()
+    return out
 
 
 def main():
@@ -516,7 +556,7 @@ def main():
         },
         {
             "flow_downscale": 0.25,
-            "flow_update_interval": 1,
+            "flow_update_interval": 2,
             "flow_pyr_scale": 0.5,
             "flow_levels": 3,
             "flow_winsize": 13,
@@ -527,7 +567,7 @@ def main():
         },
         {
             "flow_downscale": 0.2,
-            "flow_update_interval": 2,
+            "flow_update_interval": 3,
             "flow_pyr_scale": 0.5,
             "flow_levels": 2,
             "flow_winsize": 11,
@@ -538,7 +578,7 @@ def main():
         },
         {
             "flow_downscale": 0.165,
-            "flow_update_interval": 3,
+            "flow_update_interval": 4,
             "flow_pyr_scale": 0.5,
             "flow_levels": 2,
             "flow_winsize": 9,
@@ -552,7 +592,7 @@ def main():
     flow_quality_presets_lowest = [
         {
             "flow_downscale": 0.1375,
-            "flow_update_interval": 1,
+            "flow_update_interval": 2,
             "flow_pyr_scale": 0.5,
             "flow_levels": 3,
             "flow_winsize": 15,
@@ -563,7 +603,7 @@ def main():
         },
         {
             "flow_downscale": 0.125,
-            "flow_update_interval": 1,
+            "flow_update_interval": 3,
             "flow_pyr_scale": 0.5,
             "flow_levels": 3,
             "flow_winsize": 13,
@@ -574,7 +614,7 @@ def main():
         },
         {
             "flow_downscale": 0.1,
-            "flow_update_interval": 2,
+            "flow_update_interval": 4,
             "flow_pyr_scale": 0.5,
             "flow_levels": 2,
             "flow_winsize": 11,
@@ -585,7 +625,7 @@ def main():
         },
         {
             "flow_downscale": 0.0825,
-            "flow_update_interval": 3,
+            "flow_update_interval": 6,
             "flow_pyr_scale": 0.5,
             "flow_levels": 2,
             "flow_winsize": 9,
@@ -622,6 +662,10 @@ def main():
 
     mode_idx = 0
     step = False
+    show_flow_overlay = True
+    show_contour_overlay = False
+    show_threshold_overlay = False
+    show_spectrum_overlay = True
     editing_mask = False
     pending_corners = ["UL", "UR", "LR", "LL"]
     corner_points = []
@@ -631,6 +675,10 @@ def main():
     profile_keys = [
         "capture_ms",
         "preprocess_ms",
+        "temporal_filter_ms",
+        "temporal_diff_ms",
+        "screen_blend_ms",
+        "pre_blur_ms",
         "contours_ms",
         "slits_ms",
         "flow_ms",
@@ -644,6 +692,10 @@ def main():
     current_profile_stats = {
         "capture_ms": 0.0,
         "preprocess_ms": 0.0,
+        "temporal_filter_ms": 0.0,
+        "temporal_diff_ms": 0.0,
+        "screen_blend_ms": 0.0,
+        "pre_blur_ms": 0.0,
         "contours_ms": 0.0,
         "slits_ms": 0.0,
         "flow_ms": 0.0,
@@ -654,6 +706,10 @@ def main():
         "loop_ms": 0.0,
         "capture_pct": 0.0,
         "preprocess_pct": 0.0,
+        "temporal_filter_pct": 0.0,
+        "temporal_diff_pct": 0.0,
+        "screen_blend_pct": 0.0,
+        "pre_blur_pct": 0.0,
         "contours_pct": 0.0,
         "slits_pct": 0.0,
         "flow_pct": 0.0,
@@ -723,11 +779,29 @@ def main():
             "step_mode": step,
             "flow_interval": analyzer.flow_update_interval,
             "flow_detail_mode": flow_detail_mode,
+            "temporal_diff_filter": analyzer.enable_temporal_difference_filter,
+            "temporal_diff_polarity": analyzer.temporal_diff_polarity,
+            "flow_overlay": show_flow_overlay,
+            "contour_overlay": show_contour_overlay,
+            "threshold_overlay": show_threshold_overlay,
+            "spectrum_overlay": show_spectrum_overlay,
+            "temporal_filter": analyzer.enable_temporal_change_filter,
+            "screen_blend": analyzer.enable_screen_blend_equalization,
+            "pre_blur": analyzer.enable_preprocess_blur,
         }
 
         mode_name = DISPLAY_MODES[mode_idx]
         render_t0 = time.perf_counter()
-        display = make_display_frame(frame, analysis, mode_name, analyzer)
+        display = make_display_frame(
+            frame,
+            analysis,
+            mode_name,
+            analyzer,
+            show_threshold_overlay,
+            show_contour_overlay,
+            show_flow_overlay,
+            show_spectrum_overlay,
+        )
         display = draw_status_hud(
             display,
             mode_name,
@@ -768,6 +842,10 @@ def main():
         profile_windows["wait_ms"].append((wait_t1 - wait_t0) * 1000.0)
 
         profile_windows["preprocess_ms"].append(analysis["timings"].get("preprocess_ms", 0.0))
+        profile_windows["temporal_filter_ms"].append(analysis["timings"].get("temporal_filter_ms", 0.0))
+        profile_windows["temporal_diff_ms"].append(analysis["timings"].get("temporal_diff_ms", 0.0))
+        profile_windows["screen_blend_ms"].append(analysis["timings"].get("screen_blend_ms", 0.0))
+        profile_windows["pre_blur_ms"].append(analysis["timings"].get("pre_blur_ms", 0.0))
         profile_windows["contours_ms"].append(analysis["timings"].get("contours_ms", 0.0))
         profile_windows["slits_ms"].append(analysis["timings"].get("slits_ms", 0.0))
         profile_windows["flow_ms"].append(analysis["timings"].get("flow_ms", 0.0))
@@ -780,6 +858,10 @@ def main():
         avg_profile_pct = {
             "capture_pct": avg_profile_ms["capture_ms"] / total_for_pct * 100.0,
             "preprocess_pct": avg_profile_ms["preprocess_ms"] / total_for_pct * 100.0,
+            "temporal_filter_pct": avg_profile_ms["temporal_filter_ms"] / total_for_pct * 100.0,
+            "temporal_diff_pct": avg_profile_ms["temporal_diff_ms"] / total_for_pct * 100.0,
+            "screen_blend_pct": avg_profile_ms["screen_blend_ms"] / total_for_pct * 100.0,
+            "pre_blur_pct": avg_profile_ms["pre_blur_ms"] / total_for_pct * 100.0,
             "contours_pct": avg_profile_ms["contours_ms"] / total_for_pct * 100.0,
             "slits_pct": avg_profile_ms["slits_ms"] / total_for_pct * 100.0,
             "flow_pct": avg_profile_ms["flow_ms"] / total_for_pct * 100.0,
@@ -793,6 +875,10 @@ def main():
             [
                 ("capture", avg_profile_pct["capture_pct"]),
                 ("preproc", avg_profile_pct["preprocess_pct"]),
+                ("temporal", avg_profile_pct["temporal_filter_pct"]),
+                ("tdiff", avg_profile_pct["temporal_diff_pct"]),
+                ("screen", avg_profile_pct["screen_blend_pct"]),
+                ("blur", avg_profile_pct["pre_blur_pct"]),
                 ("contours", avg_profile_pct["contours_pct"]),
                 ("slits", avg_profile_pct["slits_pct"]),
                 ("flow", avg_profile_pct["flow_pct"]),
@@ -821,12 +907,36 @@ def main():
             step = not step
         if key == ord("d"):
             mode_idx = (mode_idx + 1) % len(DISPLAY_MODES)
+        if key == ord("v"):
+            show_flow_overlay = not show_flow_overlay
+        if key == ord("c"):
+            show_contour_overlay = not show_contour_overlay
+        if key == ord("r"):
+            show_threshold_overlay = not show_threshold_overlay
+        if key == ord("s"):
+            show_spectrum_overlay = not show_spectrum_overlay
         if key == ord("m"):
             analyzer.show_mask = not analyzer.show_mask
         if key == ord("f"):
             next_idx = (flow_detail_modes.index(flow_detail_mode) + 1) % len(flow_detail_modes)
             flow_detail_mode = flow_detail_modes[next_idx]
             apply_flow_quality_for_current_mode(quality_idx)
+        if key == ord("t"):
+            analyzer.enable_temporal_change_filter = not analyzer.enable_temporal_change_filter
+            analyzer.prev_temporal_lpf_float = None
+            analyzer.prev_temporal_fast_float = None
+        if key == ord("h"):
+            analyzer.enable_temporal_difference_filter = not analyzer.enable_temporal_difference_filter
+            analyzer.prev_temporal_diff_frame = None
+        if key == ord("g"):
+            temporal_diff_modes = ["positive", "negative", "both"]
+            next_idx = (temporal_diff_modes.index(analyzer.temporal_diff_polarity) + 1) % len(temporal_diff_modes)
+            analyzer.temporal_diff_polarity = temporal_diff_modes[next_idx]
+            analyzer.prev_temporal_diff_frame = None
+        if key == ord("e"):
+            analyzer.enable_screen_blend_equalization = not analyzer.enable_screen_blend_equalization
+        if key == ord("b"):
+            analyzer.enable_preprocess_blur = not analyzer.enable_preprocess_blur
         if key == ord("k"):
             editing_mask = True
             corner_points = []

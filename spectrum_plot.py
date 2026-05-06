@@ -30,7 +30,7 @@ def _put_text_with_bg(img, text, org, font_scale=0.45, color=(240, 240, 240), th
     cv2.putText(img, text, (x, y), font, font_scale, color, thickness, cv2.LINE_AA)
 
 def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spectrogram=True, show_summary=True,
-                            max_freq=5.0, size=(360, 250), alpha=0.6, margin=12):
+                            max_freq=5.0, size=(360, 250), alpha=0.6, margin=12, side="right"):
     # Skip temporal panel if no temporal data provided
     has_temporal_data = len(xf) > 0 and len(yf) > 0
     
@@ -42,7 +42,10 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
     box_w = min(box_w, max(1, w - margin * 2))
     box_h = min(box_h, max(1, h - margin * 2))
 
-    x0 = max(margin, w - box_w - margin)
+    if side == "left":
+        x0 = margin
+    else:
+        x0 = max(margin, w - box_w - margin)
     y0 = margin
 
     # Draw temporal panel only if we have temporal data

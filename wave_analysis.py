@@ -28,6 +28,7 @@ class WaveAnalyzer:
         self.last_threshold = None
         self.last_edges = None
         self.last_contours = []
+        self.last_slit_data = None
         self.last_flow = None
         self.last_direction = 0.0
         self.last_flow_metrics = {
@@ -36,6 +37,26 @@ class WaveAnalyzer:
             "coherence": 0.0,
             "activity": 0.0,
         }
+
+        # Optional preprocessing filters inspired by water_slits3_correlate_q.py
+        self.enable_temporal_change_filter = True
+        self.enable_screen_blend_equalization = True
+        self.enable_preprocess_blur = True
+        # Temporal bandpass: output = fast_EMA - slow_EMA.
+        # slow_EMA tracks the static background (DC / still reflections).
+        # fast_EMA pre-smooths per-frame noise while still following wave motion.
+        # The difference isolates the wave frequency band between the two cutoffs.
+        self.temporal_filter_seconds = 8.0        # slow EMA: ~0.02 Hz cutoff
+        self.temporal_filter_fast_seconds = 0.25  # fast EMA: ~0.6 Hz noise floor
+        self.temporal_blur_kernel = (6, 6)
+        self.prev_temporal_lpf_float = None       # slow EMA state
+        self.prev_temporal_fast_float = None      # fast EMA state
+        self.enable_temporal_difference_filter = True
+        self.prev_temporal_diff_frame = None
+        self.temporal_diff_polarity = "both"
+        self.temporal_diff_auto_gain = True
+        self.temporal_diff_target_level = 180.0
+        self.temporal_diff_max_gain = 8.0
 
         # Flow quality controls (independent from main analysis quality).
         self.flow_downscale = 0.5
@@ -86,6 +107,39 @@ class WaveAnalyzer:
             # Force optical-flow warm restart if frame scale changes.
             self.prev_flow_gray = None
             self.last_flow = None
+            self.prev_temporal_diff_frame = None
+
+    def _apply_temporal_difference_filter(self, gray_img):
+        current = gray_img.astype(np.int16)
+        if self.prev_temporal_diff_frame is None or self.prev_temporal_diff_frame.shape != current.shape:
+            self.prev_temporal_diff_frame = current.copy()
+            return np.zeros(gray_img.shape, dtype=np.uint8)
+
+        delta = current - self.prev_temporal_diff_frame
+        self.prev_temporal_diff_frame = current.copy()
+
+        if self.temporal_diff_polarity == "positive":
+            out = np.clip(delta, 0, 255)
+        elif self.temporal_diff_polarity == "negative":
+            out = np.clip(-delta, 0, 255)
+        else:
+            out = np.clip(np.abs(delta), 0, 255)
+
+        out_u8 = out.astype(np.uint8)
+        if not self.temporal_diff_auto_gain:
+            return out_u8
+
+        nonzero = out_u8[out_u8 > 0]
+        if nonzero.size == 0:
+            return out_u8
+
+        p95 = float(np.percentile(nonzero, 95.0))
+        if p95 < 1e-6:
+            return out_u8
+
+        gain = min(self.temporal_diff_max_gain, max(1.0, self.temporal_diff_target_level / p95))
+        boosted = np.clip(out_u8.astype(np.float32) * gain, 0.0, 255.0)
+        return boosted.astype(np.uint8)
 
     def set_flow_quality(
         self,
@@ -164,7 +218,46 @@ class WaveAnalyzer:
     def set_mask_points(self, points):
         self.mask_points = points if points and len(points) == 4 else None
 
+    @staticmethod
+    def _screen_blend_self(gray_img):
+        base_float = gray_img.astype(np.float32) / 255.0
+        result_float = 1.0 - ((1.0 - base_float) * (1.0 - base_float))
+        return np.clip(result_float * 255.0, 0.0, 255.0).astype(np.uint8)
+
+    def _apply_temporal_change_filter(self, gray_img):
+        blurred = cv2.blur(gray_img, self.temporal_blur_kernel)
+        current_float = blurred.astype(np.float32)
+
+        # --- slow EMA: converges to static background over ~temporal_filter_seconds ---
+        alpha_slow = 1.0 / max(1.0, self.fps * self.temporal_filter_seconds)
+        if self.prev_temporal_lpf_float is None or self.prev_temporal_lpf_float.shape != current_float.shape:
+            self.prev_temporal_lpf_float = current_float.copy()
+        self.prev_temporal_lpf_float = (
+            alpha_slow * current_float
+            + (1.0 - alpha_slow) * self.prev_temporal_lpf_float
+        )
+
+        # --- fast EMA: smooths per-frame noise, still follows wave motion ---
+        alpha_fast = 1.0 / max(1.0, self.fps * self.temporal_filter_fast_seconds)
+        if self.prev_temporal_fast_float is None or self.prev_temporal_fast_float.shape != current_float.shape:
+            self.prev_temporal_fast_float = current_float.copy()
+        self.prev_temporal_fast_float = (
+            alpha_fast * current_float
+            + (1.0 - alpha_fast) * self.prev_temporal_fast_float
+        )
+
+        # Bandpass = fast_EMA - slow_EMA: retains only the wave-frequency band.
+        diff = np.clip(self.prev_temporal_fast_float - self.prev_temporal_lpf_float, 0.0, 255.0).astype(np.uint8)
+        return diff
+
     def _mask_and_preprocess(self, gray):
+        stage_times = {
+            "temporal_filter_ms": 0.0,
+            "temporal_diff_ms": 0.0,
+            "screen_blend_ms": 0.0,
+            "pre_blur_ms": 0.0,
+        }
+
         h, w = gray.shape
         mask = np.zeros((h, w), dtype=np.uint8)
 
@@ -174,17 +267,47 @@ class WaveAnalyzer:
             pts = np.array(self.mask_points, dtype=np.int32)
             cv2.fillConvexPoly(mask, pts, 255)
 
-        norm = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
-        eq = cv2.equalizeHist(norm)
-        roi_gray = cv2.bitwise_and(eq, eq, mask=mask)
-        blur = cv2.GaussianBlur(roi_gray, (5, 5), 0)
+        source = gray
+        if self.enable_temporal_change_filter:
+            t_temporal = perf_counter()
+            source = self._apply_temporal_change_filter(source)
+            stage_times["temporal_filter_ms"] = (perf_counter() - t_temporal) * 1000.0
+
+        else:
+            self.prev_temporal_lpf_float = None
+            self.prev_temporal_fast_float = None
+
+        if self.enable_temporal_difference_filter:
+            t_temporal_diff = perf_counter()
+            source = self._apply_temporal_difference_filter(source)
+            stage_times["temporal_diff_ms"] = (perf_counter() - t_temporal_diff) * 1000.0
+        else:
+            self.prev_temporal_diff_frame = None
+
+        if self.enable_screen_blend_equalization:
+            t_screen = perf_counter()
+            source = self._screen_blend_self(source)
+            stage_times["screen_blend_ms"] = (perf_counter() - t_screen) * 1000.0
+
+        # Keep source tonal structure intact so temporal/screen filters are visually and analytically meaningful.
+        roi_gray = cv2.bitwise_and(source, source, mask=mask)
+        if self.enable_preprocess_blur:
+            t_blur = perf_counter()
+            blur = cv2.GaussianBlur(roi_gray, (5, 5), 0)
+            stage_times["pre_blur_ms"] = (perf_counter() - t_blur) * 1000.0
+        else:
+            blur = roi_gray
+
+        preprocess_display = cv2.bitwise_and(blur, blur, mask=mask)
 
         _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         edges = cv2.Canny(blur, 40, 120)
+        thresh = cv2.bitwise_and(thresh, thresh, mask=mask)
+        edges = cv2.bitwise_and(edges, edges, mask=mask)
 
         self.last_threshold = thresh
         self.last_edges = edges
-        return mask, roi_gray, thresh, edges
+        return mask, roi_gray, blur, thresh, edges, preprocess_display, stage_times
 
     def _analyze_contours(self, thresh, mask):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -392,8 +515,9 @@ class WaveAnalyzer:
     def analyze(self, gray):
         timers = {}
         t0 = perf_counter()
-        mask, roi_gray, thresh, edges = self._mask_and_preprocess(gray)
+        mask, roi_gray, blur, thresh, edges, preprocess_display, preprocess_stage_times = self._mask_and_preprocess(gray)
         timers["preprocess_ms"] = (perf_counter() - t0) * 1000.0
+        timers.update(preprocess_stage_times)
 
         self.frame_index += 1
         run_full = self.frame_index % self.frame_skip == 0
@@ -410,19 +534,27 @@ class WaveAnalyzer:
         timers["contours_ms"] = (perf_counter() - t1) * 1000.0
 
         t2 = perf_counter()
-        slit_data = self._analyze_slits(roi_gray) if run_full else {
-            "spatial_peak_common": 0.0,
-            "temporal_peak_common": self.smoothed["wave_frequency_hz"],
-            "band_low": 0.0,
-            "band_mid": 0.0,
-            "band_high": 0.0,
-            "temporal_xf": np.array([]),
-            "temporal_yf": np.array([]),
-        }
+        # Tap spectral analysis after blur, as requested.
+        if run_full:
+            slit_data = self._analyze_slits(blur)
+            self.last_slit_data = slit_data
+        elif self.last_slit_data is not None:
+            slit_data = self.last_slit_data
+        else:
+            slit_data = {
+                "spatial_peak_common": 0.0,
+                "temporal_peak_common": self.smoothed["wave_frequency_hz"],
+                "band_low": 0.0,
+                "band_mid": 0.0,
+                "band_high": 0.0,
+                "temporal_xf": np.array([]),
+                "temporal_yf": np.array([]),
+            }
         timers["slits_ms"] = (perf_counter() - t2) * 1000.0
 
         t3 = perf_counter()
-        flow_data = self._analyze_flow(roi_gray)
+        # Tap optical flow after blur as parallel branch from the same signal.
+        flow_data = self._analyze_flow(blur)
         timers["flow_ms"] = (perf_counter() - t3) * 1000.0
 
         t4 = perf_counter()
@@ -435,6 +567,7 @@ class WaveAnalyzer:
             "roi_gray": roi_gray,
             "threshold": thresh,
             "edges": edges,
+            "preprocess_display": preprocess_display,
             "contours": self.last_contours,
             "contour_data": contour_data,
             "slit_data": slit_data,

@@ -8,10 +8,21 @@
   - left/right movement of grains or within each grain: from wave direction
   - left/right position from wave pattern location laft/right: split into 4 zones(?)
 
-* Draw mask to limit the analysis area, on startup
-* Possible to save the mask with the video file
-* Filter video to diminish slow changes and static objects, also sharpen.
-  - this is in water slits3 correlate
+* Filter video to diminish slow changes and static objects
+  - some is done, but can we try to discard waves moving at a slower speed than a set threshold?
+  - this might remove static lines or clear reflected features
+
+* Possible to extract only wave-like components, e.g. require a minimum curvature?
+  - this remove straight lines from building reflections etc?
+
+* Make spectral analysis for each of the 4 quadrants
+  - simplify the spectral display so it takes less visual focus
+  - only the line, colored for the different freq bands?
+  - sum of the 2 vertical and the 2 horizontal quadrants
+  - centroid
+  - the spatial freqs are not displayed, or has very low amplitude
+  - what are the numbers in the lower left?
+
 * Make 4 display panels. 
   - original video, filtered, fft zoomed in, and use the 4 panel to display data values
 * Add autocorrelation to detect wave direction and further frequency analysis
