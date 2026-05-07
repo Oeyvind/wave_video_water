@@ -29,12 +29,29 @@ def _put_text_with_bg(img, text, org, font_scale=0.45, color=(240, 240, 240), th
         cv2.addWeighted(overlay, alpha, img, 1.0 - alpha, 0, img)
     cv2.putText(img, text, (x, y), font, font_scale, color, thickness, cv2.LINE_AA)
 
-def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spectrogram=True, show_summary=True,
-                            max_freq=5.0, size=(360, 250), alpha=0.6, margin=12, side="right"):
+def render_spectrum_overlay(
+    frame,
+    xf,
+    yf,
+    peaks,
+    spatial_freqs=None,
+    quadrant_summaries=None,
+    layout_mode="full",
+    show_spectrogram=True,
+    show_summary=True,
+    max_freq=5.0,
+    size=(360, 250),
+    alpha=0.6,
+    margin=12,
+    side="right",
+):
     # Skip temporal panel if no temporal data provided
     has_temporal_data = len(xf) > 0 and len(yf) > 0
+    has_quadrant_data = quadrant_summaries is not None
+    if layout_mode not in ("full", "quadrants"):
+        layout_mode = "full"
     
-    if not has_temporal_data and spatial_freqs is None:
+    if not has_temporal_data and spatial_freqs is None and not has_quadrant_data:
         return frame
 
     h, w = frame.shape[:2]
@@ -48,8 +65,8 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
         x0 = max(margin, w - box_w - margin)
     y0 = margin
 
-    # Draw temporal panel only if we have temporal data
-    if has_temporal_data:
+    # Draw temporal panel only in full mode.
+    if layout_mode == "full" and has_temporal_data:
         panel = np.zeros((box_h, box_w, 3), dtype=np.uint8)
         panel[:] = (20, 20, 20)
 
@@ -96,15 +113,15 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
         frame[y0:y0 + box_h, x0:x0 + box_w] = blended
         y0 = y0 + box_h + margin
     
-    # Spatial frequency panel
-    if spatial_freqs is not None:
-        spatial_box_h = 250
+    # Spatial frequency panel (full mode only).
+    if layout_mode == "full" and spatial_freqs is not None:
+        spatial_box_h = 210
         
         if y0 + spatial_box_h < h:
             spatial_panel = np.zeros((spatial_box_h, box_w, 3), dtype=np.uint8)
             spatial_panel[:] = (20, 20, 20)
             
-            pad_l, pad_r, pad_t, pad_b = 30, 10, 10, 80
+            pad_l, pad_r, pad_t, pad_b = 30, 10, 10, 68
             plot_w = max(1, box_w - pad_l - pad_r)
             plot_h = max(1, spatial_box_h - pad_t - pad_b)
             
@@ -124,22 +141,22 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
                 spatial_xf = np.nan_to_num(spatial_xf, nan=0.0, posinf=0.0, neginf=0.0)
                 spatial_yf = np.nan_to_num(spatial_yf, nan=0.0, posinf=0.0, neginf=0.0)
                 
-                mask = (spatial_xf >= 0.0) & (spatial_xf <= max_spatial_freq)
+                # Exclude DC bin and use robust scaling so small bumps remain visible.
+                mask = (spatial_xf >= 0.1) & (spatial_xf <= max_spatial_freq)
                 if np.any(mask) and len(spatial_xf) > 1:
                     xf_plot = spatial_xf[mask]
                     yf_plot = spatial_yf[mask]
-                    
-                    # Use log scale for better visibility of low-amplitude signals
-                    yf_plot_log = np.log10(np.maximum(yf_plot, 1e-10))
-                    max_amp = float(np.max(yf_plot_log)) if len(yf_plot_log) > 0 else 1.0
-                    min_amp = float(np.min(yf_plot_log)) if len(yf_plot_log) > 0 else 0.0
 
-                    if max_amp > min_amp:
+                    yf_plot_log = np.log10(np.maximum(yf_plot, 1e-8))
+                    amp_floor = float(np.percentile(yf_plot_log, 5.0))
+                    amp_ceil = float(np.percentile(yf_plot_log, 98.0))
+
+                    if amp_ceil > amp_floor:
                         points = []
                         for x_val, y_val_log in zip(xf_plot, yf_plot_log):
                             x_px = pad_l + int((x_val / max_spatial_freq) * plot_w)
-                            # Normalize log amplitude to [0, 1] range
-                            norm_amp = (y_val_log - min_amp) / (max_amp - min_amp) if max_amp > min_amp else 0.5
+                            norm_amp = (y_val_log - amp_floor) / (amp_ceil - amp_floor)
+                            norm_amp = float(np.clip(norm_amp, 0.0, 1.0))
                             y_px = pad_t + plot_h - int(norm_amp * plot_h)
                             points.append((x_px, y_px))
                         if len(points) >= 2:
@@ -152,13 +169,40 @@ def render_spectrum_overlay(frame, xf, yf, peaks, spatial_freqs=None, show_spect
             if show_summary:
                 text_y = pad_t + plot_h + 28
                 for fmin, fmax, color, label in _BANDS_SPATIAL:
-                    peak = float(spatial_freqs.get(label, 0.0)) if spatial_freqs else 0.0
-                    text = f"{label}: {peak:.2f}c/f"
+                    ratio = float(spatial_freqs.get(label, 0.0)) if spatial_freqs else 0.0
+                    text = f"{label}: {ratio * 100.0:.0f}%"
                     _put_text_with_bg(spatial_panel, text, (8, text_y), font_scale=0.45, color=(240, 240, 240))
                     text_y += 14
+
+                peak_common = float(spatial_freqs.get("peak_common", 0.0)) if spatial_freqs else 0.0
+                _put_text_with_bg(spatial_panel, f"peak: {peak_common:.2f} c/f", (8, text_y + 2), font_scale=0.42, color=(240, 240, 240))
 
             roi = frame[y0:y0 + spatial_box_h, x0:x0 + box_w]
             blended = cv2.addWeighted(roi, 1.0 - alpha, spatial_panel, alpha, 0)
             frame[y0:y0 + spatial_box_h, x0:x0 + box_w] = blended
+            y0 = y0 + spatial_box_h + margin
+
+    # Compact per-quadrant spectral summary panel.
+    if has_quadrant_data and y0 + 116 < h:
+        q_box_h = 116
+        q_panel = np.zeros((q_box_h, box_w, 3), dtype=np.uint8)
+        q_panel[:] = (20, 20, 20)
+
+        _put_text_with_bg(q_panel, "Quadrant Spectral", (8, 16), font_scale=0.45, color=(220, 220, 220))
+        row_y = 34
+        for label in ("UL", "UR", "LL", "LR"):
+            q = quadrant_summaries.get(label, {})
+            peak = float(q.get("peak", 0.0))
+            dom = str(q.get("dominant", "-")).upper()
+            low = int(round(float(q.get("band_low", 0.0)) * 100.0))
+            mid = int(round(float(q.get("band_mid", 0.0)) * 100.0))
+            high = int(round(float(q.get("band_high", 0.0)) * 100.0))
+            text = f"{label} p:{peak:4.1f} {dom}  L/M/H {low:02d}/{mid:02d}/{high:02d}"
+            _put_text_with_bg(q_panel, text, (8, row_y), font_scale=0.40, color=(240, 240, 240))
+            row_y += 20
+
+        roi = frame[y0:y0 + q_box_h, x0:x0 + box_w]
+        blended = cv2.addWeighted(roi, 1.0 - alpha, q_panel, alpha, 0)
+        frame[y0:y0 + q_box_h, x0:x0 + box_w] = blended
     
     return frame

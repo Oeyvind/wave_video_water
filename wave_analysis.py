@@ -70,7 +70,9 @@ class WaveAnalyzer:
         self.flow_flags = 0
 
         history_len = int(self.fps * 4.0)
+        self.spectral_mode = "slits"
         self.slit_history = [deque(maxlen=history_len) for _ in range(self.slit_count)]
+        self.global_history = deque(maxlen=history_len)
 
         self.smoothed = {
             "wave_frequency_hz": 0.0,
@@ -353,6 +355,79 @@ class WaveAnalyzer:
             return [h // 2]
         return [int((idx + 1) * h / (self.slit_count + 1)) for idx in range(self.slit_count)]
 
+    def _temporal_fft_from_history(self, history):
+        if len(history) < 12:
+            return 0.0, np.array([]), np.array([])
+
+        sig = np.array(history, dtype=np.float32)
+        sig -= float(np.mean(sig))
+        sig *= np.hanning(len(sig))
+
+        ytf = np.abs(rfft(sig))
+        xtf = rfftfreq(len(sig), 1.0 / self.fps)
+        valid = xtf > 0.05
+        peak = 0.0
+        if np.any(valid):
+            peak_idx = int(np.argmax(ytf[valid]))
+            peak = float(xtf[valid][peak_idx])
+        return peak, xtf, ytf
+
+    @staticmethod
+    def _quadrant_spatial_summary(roi_gray):
+        h, w = roi_gray.shape
+        half_h = h // 2
+        half_w = w // 2
+        regions = {
+            "UL": roi_gray[0:half_h, 0:half_w],
+            "UR": roi_gray[0:half_h, half_w:w],
+            "LL": roi_gray[half_h:h, 0:half_w],
+            "LR": roi_gray[half_h:h, half_w:w],
+        }
+
+        out = {}
+        for label, block in regions.items():
+            if block.size == 0 or block.shape[1] < 8:
+                out[label] = {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"}
+                continue
+
+            profile = np.mean(block.astype(np.float32), axis=0)
+            profile -= float(np.mean(profile))
+            profile *= np.hanning(len(profile))
+
+            yf = np.abs(rfft(profile))
+            xf = rfftfreq(len(profile), 1.0) * block.shape[1]
+
+            if len(yf) > 1:
+                peak_idx = int(np.argmax(yf[1:]) + 1)
+                peak = float(xf[peak_idx])
+            else:
+                peak = 0.0
+
+            low_mask = (xf >= 0.5) & (xf < 3.0)
+            mid_mask = (xf >= 3.0) & (xf < 8.0)
+            high_mask = (xf >= 8.0) & (xf <= 20.0)
+            low_energy = float(np.sum(yf[low_mask]))
+            mid_energy = float(np.sum(yf[mid_mask]))
+            high_energy = float(np.sum(yf[high_mask]))
+            total_energy = low_energy + mid_energy + high_energy + 1e-6
+
+            band_vals = {
+                "low": low_energy / total_energy,
+                "mid": mid_energy / total_energy,
+                "high": high_energy / total_energy,
+            }
+            dominant = max(band_vals, key=band_vals.get)
+
+            out[label] = {
+                "peak": peak,
+                "band_low": band_vals["low"],
+                "band_mid": band_vals["mid"],
+                "band_high": band_vals["high"],
+                "dominant": dominant,
+            }
+
+        return out
+
     def _analyze_slits(self, roi_gray):
         h, w = roi_gray.shape
         rows = self._slit_rows(h)
@@ -360,6 +435,8 @@ class WaveAnalyzer:
         low_energy = 0.0
         mid_energy = 0.0
         high_energy = 0.0
+        spatial_xf = np.array([])
+        spatial_yf_accum = None
 
         for idx, row in enumerate(rows):
             slit = roi_gray[row : row + 1, :].flatten().astype(np.float32)
@@ -368,6 +445,10 @@ class WaveAnalyzer:
 
             yf = np.abs(rfft(slit))
             xf = rfftfreq(len(slit), 1.0)
+            spatial_xf = xf * w
+            if spatial_yf_accum is None:
+                spatial_yf_accum = np.zeros_like(yf, dtype=np.float32)
+            spatial_yf_accum += yf.astype(np.float32)
 
             if len(yf) > 1:
                 peak_idx = int(np.argmax(yf[1:]) + 1)
@@ -386,20 +467,19 @@ class WaveAnalyzer:
         temporal_xf = np.array([])
         temporal_yf = np.array([])
         for history in self.slit_history:
-            if len(history) < 12:
-                continue
-            sig = np.array(history, dtype=np.float32)
-            sig -= float(np.mean(sig))
-            sig *= np.hanning(len(sig))
+            peak, xtf, ytf = self._temporal_fft_from_history(history)
+            if peak > 0.0:
+                temporal_freqs.append(peak)
+            if len(xtf) > 0:
+                temporal_xf = xtf
+                temporal_yf = ytf
 
-            ytf = np.abs(rfft(sig))
-            xtf = rfftfreq(len(sig), 1.0 / self.fps)
-            valid = xtf > 0.05
-            if np.any(valid):
-                peak_idx = int(np.argmax(ytf[valid]))
-                temporal_freqs.append(float(xtf[valid][peak_idx]))
-            temporal_xf = xtf
-            temporal_yf = ytf
+        spatial_yf = (
+            spatial_yf_accum / float(len(rows))
+            if spatial_yf_accum is not None and len(rows) > 0
+            else np.array([])
+        )
+        quadrant_summaries = self._quadrant_spatial_summary(roi_gray)
 
         total_energy = low_energy + mid_energy + high_energy + 1e-6
         return {
@@ -408,6 +488,98 @@ class WaveAnalyzer:
             "band_low": low_energy / total_energy,
             "band_mid": mid_energy / total_energy,
             "band_high": high_energy / total_energy,
+            "spatial_xf": spatial_xf,
+            "spatial_yf": spatial_yf,
+            "quadrant_summaries": quadrant_summaries,
+            "slit_rows": [int(r) for r in rows],
+            "temporal_xf": temporal_xf,
+            "temporal_yf": temporal_yf,
+        }
+
+    def _analyze_fft2(self, roi_gray):
+        h, w = roi_gray.shape
+        if h < 8 or w < 8:
+            return {
+                "spatial_peak_common": 0.0,
+                "temporal_peak_common": 0.0,
+                "band_low": 0.0,
+                "band_mid": 0.0,
+                "band_high": 0.0,
+                "spatial_xf": np.array([]),
+                "spatial_yf": np.array([]),
+                "quadrant_summaries": self._quadrant_spatial_summary(roi_gray),
+                "slit_rows": [],
+                "temporal_xf": np.array([]),
+                "temporal_yf": np.array([]),
+            }
+
+        img = roi_gray.astype(np.float32)
+        img -= float(np.mean(img))
+        win2d = np.outer(np.hanning(h), np.hanning(w)).astype(np.float32)
+        img *= win2d
+
+        spec2 = np.fft.fftshift(np.fft.fft2(img))
+        mag = np.abs(spec2)
+
+        fx = np.fft.fftshift(np.fft.fftfreq(w)) * w
+        fy = np.fft.fftshift(np.fft.fftfreq(h)) * h
+        fxx, fyy = np.meshgrid(fx, fy)
+        radial = np.sqrt(fxx * fxx + fyy * fyy)
+
+        max_cf = 20.0
+        bins = np.linspace(0.0, max_cf, 129)
+        bin_centers = 0.5 * (bins[:-1] + bins[1:])
+
+        idx = np.digitize(radial.ravel(), bins) - 1
+        valid = (idx >= 0) & (idx < len(bin_centers))
+        idx = idx[valid]
+        weights = mag.ravel()[valid]
+
+        sums = np.bincount(idx, weights=weights, minlength=len(bin_centers)).astype(np.float32)
+        counts = np.bincount(idx, minlength=len(bin_centers)).astype(np.float32)
+        spatial_yf = sums / np.maximum(counts, 1.0)
+        spatial_xf = bin_centers
+
+        low_mask = (spatial_xf >= 0.5) & (spatial_xf < 3.0)
+        mid_mask = (spatial_xf >= 3.0) & (spatial_xf < 8.0)
+        high_mask = (spatial_xf >= 8.0) & (spatial_xf <= 20.0)
+        low_energy = float(np.sum(spatial_yf[low_mask]))
+        mid_energy = float(np.sum(spatial_yf[mid_mask]))
+        high_energy = float(np.sum(spatial_yf[high_mask]))
+        total_energy = low_energy + mid_energy + high_energy + 1e-6
+
+        peak_common = 0.0
+        valid_peak = spatial_xf >= 0.5
+        if np.any(valid_peak):
+            peak_idx = int(np.argmax(spatial_yf[valid_peak]))
+            peak_common = float(spatial_xf[valid_peak][peak_idx])
+
+        # Temporal analysis: use the same slit time-history method as _analyze_slits.
+        rows = self._slit_rows(h)
+        for idx, row in enumerate(rows):
+            self.slit_history[idx].append(float(np.mean(roi_gray[max(0, row - 1) : min(h, row + 2), :])))
+
+        temporal_freqs = []
+        temporal_xf = np.array([])
+        temporal_yf = np.array([])
+        for history in self.slit_history:
+            tpeak, xtf, ytf = self._temporal_fft_from_history(history)
+            if tpeak > 0.0:
+                temporal_freqs.append(tpeak)
+            if len(xtf) > 0:
+                temporal_xf = xtf
+                temporal_yf = ytf
+
+        return {
+            "spatial_peak_common": peak_common,
+            "temporal_peak_common": float(np.median(temporal_freqs)) if temporal_freqs else 0.0,
+            "band_low": low_energy / total_energy,
+            "band_mid": mid_energy / total_energy,
+            "band_high": high_energy / total_energy,
+            "spatial_xf": spatial_xf,
+            "spatial_yf": spatial_yf,
+            "quadrant_summaries": self._quadrant_spatial_summary(roi_gray),
+            "slit_rows": [int(r) for r in rows],
             "temporal_xf": temporal_xf,
             "temporal_yf": temporal_yf,
         }
@@ -536,7 +708,10 @@ class WaveAnalyzer:
         t2 = perf_counter()
         # Tap spectral analysis after blur, as requested.
         if run_full:
-            slit_data = self._analyze_slits(blur)
+            if self.spectral_mode == "fft2":
+                slit_data = self._analyze_fft2(blur)
+            else:
+                slit_data = self._analyze_slits(blur)
             self.last_slit_data = slit_data
         elif self.last_slit_data is not None:
             slit_data = self.last_slit_data
@@ -547,6 +722,15 @@ class WaveAnalyzer:
                 "band_low": 0.0,
                 "band_mid": 0.0,
                 "band_high": 0.0,
+                "spatial_xf": np.array([]),
+                "spatial_yf": np.array([]),
+                "quadrant_summaries": {
+                    "UL": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
+                    "UR": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
+                    "LL": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
+                    "LR": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
+                },
+                "slit_rows": [],
                 "temporal_xf": np.array([]),
                 "temporal_yf": np.array([]),
             }

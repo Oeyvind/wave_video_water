@@ -285,6 +285,8 @@ def draw_status_hud(
         f"[R] threshold overlay: {'on' if switches['threshold_overlay'] else 'off'}",
         f"[C] contour overlay: {'on' if switches['contour_overlay'] else 'off'}",
         f"[S] spectrum overlay (tap@blur): {'on' if switches['spectrum_overlay'] else 'off'}",
+        f"[X] spectrum view: {switches['spectrum_view_mode']}",
+        f"[Z] spectral mode: {switches['spectral_mode']}",
         f"[V] flow overlay (tap@blur): {'on' if switches['flow_overlay'] else 'off'}",
         f"[F] flow detail: {switches['flow_detail_mode']}",
         f"flow cadence: 1/{switches['flow_interval']}",
@@ -425,6 +427,20 @@ def draw_quadrant_flow_arrows(frame, flow):
     return out
 
 
+def draw_spectral_slits_overlay(frame, slit_rows):
+    if not slit_rows:
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+    for idx, row in enumerate(slit_rows):
+        y = int(np.clip(row, 0, h - 1))
+        cv2.line(out, (0, y), (w - 1, y), (255, 210, 60), 1)
+        if idx == 0:
+            cv2.putText(out, "spectral slits", (10, max(15, y - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 220, 120), 1, cv2.LINE_AA)
+    return out
+
+
 def make_display_frame(
     base_frame,
     analysis,
@@ -434,6 +450,7 @@ def make_display_frame(
     contour_overlay,
     flow_overlay,
     spectrum_overlay,
+    spectrum_view_mode,
 ):
     if mode_name == "filtered":
         # Show the exact grayscale signal used for threshold/contour/spectral/flow taps.
@@ -457,12 +474,15 @@ def make_display_frame(
 
     if spectrum_overlay:
         slit = analysis["slit_data"]
+        if analyzer.spectral_mode == "slits":
+            out = draw_spectral_slits_overlay(out, slit.get("slit_rows", []))
         spatial_freqs = {
-            "low": slit["band_low"] * 20.0,
-            "mid": slit["band_mid"] * 20.0,
-            "high": slit["band_high"] * 20.0,
-            "xf": np.array([]),
-            "yf": np.array([]),
+            "low": slit["band_low"],
+            "mid": slit["band_mid"],
+            "high": slit["band_high"],
+            "peak_common": slit.get("spatial_peak_common", 0.0),
+            "xf": slit.get("spatial_xf", np.array([])),
+            "yf": slit.get("spatial_yf", np.array([])),
         }
         render_spectrum_overlay(
             out,
@@ -474,6 +494,8 @@ def make_display_frame(
                 "high": analysis["smoothed"]["wave_frequency_hz"] * 1.5,
             },
             spatial_freqs=spatial_freqs,
+            quadrant_summaries=slit.get("quadrant_summaries", None),
+            layout_mode=spectrum_view_mode,
             show_spectrogram=True,
             show_summary=True,
             side="left",
@@ -666,6 +688,8 @@ def main():
     show_contour_overlay = False
     show_threshold_overlay = False
     show_spectrum_overlay = True
+    spectrum_view_modes = ["full", "quadrants"]
+    spectrum_view_mode = "full"
     editing_mask = False
     pending_corners = ["UL", "UR", "LR", "LL"]
     corner_points = []
@@ -781,10 +805,12 @@ def main():
             "flow_detail_mode": flow_detail_mode,
             "temporal_diff_filter": analyzer.enable_temporal_difference_filter,
             "temporal_diff_polarity": analyzer.temporal_diff_polarity,
+            "spectral_mode": analyzer.spectral_mode,
             "flow_overlay": show_flow_overlay,
             "contour_overlay": show_contour_overlay,
             "threshold_overlay": show_threshold_overlay,
             "spectrum_overlay": show_spectrum_overlay,
+            "spectrum_view_mode": spectrum_view_mode,
             "temporal_filter": analyzer.enable_temporal_change_filter,
             "screen_blend": analyzer.enable_screen_blend_equalization,
             "pre_blur": analyzer.enable_preprocess_blur,
@@ -801,6 +827,7 @@ def main():
             show_contour_overlay,
             show_flow_overlay,
             show_spectrum_overlay,
+            spectrum_view_mode,
         )
         display = draw_status_hud(
             display,
@@ -915,6 +942,16 @@ def main():
             show_threshold_overlay = not show_threshold_overlay
         if key == ord("s"):
             show_spectrum_overlay = not show_spectrum_overlay
+        if key == ord("x"):
+            next_idx = (spectrum_view_modes.index(spectrum_view_mode) + 1) % len(spectrum_view_modes)
+            spectrum_view_mode = spectrum_view_modes[next_idx]
+        if key == ord("z"):
+            spectral_modes = ["slits", "fft2"]
+            next_idx = (spectral_modes.index(analyzer.spectral_mode) + 1) % len(spectral_modes)
+            analyzer.spectral_mode = spectral_modes[next_idx]
+            analyzer.last_slit_data = None
+            analyzer.global_history.clear()
+            analyzer.slit_history = [deque(maxlen=buf.maxlen) for buf in analyzer.slit_history]
         if key == ord("m"):
             analyzer.show_mask = not analyzer.show_mask
         if key == ord("f"):
@@ -925,9 +962,13 @@ def main():
             analyzer.enable_temporal_change_filter = not analyzer.enable_temporal_change_filter
             analyzer.prev_temporal_lpf_float = None
             analyzer.prev_temporal_fast_float = None
+            if not analyzer.enable_temporal_change_filter:
+                profile_windows["temporal_filter_ms"].clear()
         if key == ord("h"):
             analyzer.enable_temporal_difference_filter = not analyzer.enable_temporal_difference_filter
             analyzer.prev_temporal_diff_frame = None
+            if not analyzer.enable_temporal_difference_filter:
+                profile_windows["temporal_diff_ms"].clear()
         if key == ord("g"):
             temporal_diff_modes = ["positive", "negative", "both"]
             next_idx = (temporal_diff_modes.index(analyzer.temporal_diff_polarity) + 1) % len(temporal_diff_modes)
