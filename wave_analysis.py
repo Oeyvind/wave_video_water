@@ -28,6 +28,9 @@ class WaveAnalyzer:
         self.last_threshold = None
         self.last_edges = None
         self.last_contours = []
+        self.last_static_contours = []
+        self.prev_contour_boxes = []
+        self.prev_contour_centroids = []
         self.last_slit_data = None
         self.last_flow = None
         self.last_direction = 0.0
@@ -40,23 +43,32 @@ class WaveAnalyzer:
 
         # Optional preprocessing filters inspired by water_slits3_correlate_q.py
         self.enable_temporal_change_filter = True
-        self.enable_screen_blend_equalization = True
-        self.enable_preprocess_blur = True
-        # Temporal bandpass: output = fast_EMA - slow_EMA.
-        # slow_EMA tracks the static background (DC / still reflections).
-        # fast_EMA pre-smooths per-frame noise while still following wave motion.
-        # The difference isolates the wave frequency band between the two cutoffs.
-        self.temporal_filter_seconds = 8.0        # slow EMA: ~0.02 Hz cutoff
-        self.temporal_filter_fast_seconds = 0.25  # fast EMA: ~0.6 Hz noise floor
-        self.temporal_blur_kernel = (6, 6)
-        self.prev_temporal_lpf_float = None       # slow EMA state
-        self.prev_temporal_fast_float = None      # fast EMA state
+        self.screen_blend_mode = 1
+        self.blur_mode = 1
+        self.gain_mode = 0   # 0=off, 1=-25%, 2=+50%, 3=auto
+        # Temporal change filter: first-order IIR lowpass with highpass output.
+        # Computes: output = input - lowpass(input), emphasizing dynamic content.
+        self.temporal_filter_seconds = 8.0  # IIR time constant (smoothing window)
+        self.temporal_filter_output_mode = "change"  # "change" or "lowpass"
+        self.prev_temporal_float = None     # IIR lowpass state
+        self.prev_temporal_u8 = None        # uint8 view of lowpass state for subtraction
+        self.temporal_change_u8 = None      # reusable output buffer for lowpass highpass
         self.enable_temporal_difference_filter = True
         self.prev_temporal_diff_frame = None
-        self.temporal_diff_polarity = "both"
-        self.temporal_diff_auto_gain = True
-        self.temporal_diff_target_level = 180.0
-        self.temporal_diff_max_gain = 8.0
+        self.temporal_diff_u8 = None
+        self.temporal_diff_polarity = "positive"
+        self.temporal_diff_auto_gain = False
+        self.enable_contour_motion_filter = True
+        self.show_static_contours = True
+        # Retained field name for compatibility; now interpreted as minimum straight-line length in pixels.
+        self.contour_motion_threshold_px = 30.0
+        x = np.arange(256, dtype=np.float32) / 255.0
+        screen_vals = 1.0 - ((1.0 - x) * (1.0 - x))
+        self.screen_blend_lut = np.clip(screen_vals * 255.0, 0.0, 255.0).astype(np.uint8).reshape((256, 1))
+        screen_vals_2x = 1.0 - ((1.0 - screen_vals) * (1.0 - screen_vals))
+        self.screen_blend_lut_2x = np.clip(screen_vals_2x * 255.0, 0.0, 255.0).astype(np.uint8).reshape((256, 1))
+        self.preprocess_blur_kernel_small = (5, 5)
+        self.preprocess_blur_kernel_large = (15, 15)
 
         # Flow quality controls (independent from main analysis quality).
         self.flow_downscale = 0.5
@@ -70,14 +82,18 @@ class WaveAnalyzer:
         self.flow_flags = 0
 
         history_len = int(self.fps * 4.0)
-        self.spectral_mode = "slits"
         self.slit_history = [deque(maxlen=history_len) for _ in range(self.slit_count)]
-        self.global_history = deque(maxlen=history_len)
+        self.spectral_update_hz = 4.0
+        self.last_spectral_update_t = 0.0
 
         self.smoothed = {
             "wave_frequency_hz": 0.0,
+            "freq_centroid_hz": 0.0,
             "bump_size_common": 0.0,
             "bump_size_spread": 0.0,
+            "bump_size_max": 0.0,
+            "bump_size_centroid": 0.0,
+            "bump_shape_roundness": 0.0,
             "movement_direction_deg": 0.0,
             "movement_speed_norm": 0.0,
             "activity": 0.0,
@@ -110,38 +126,27 @@ class WaveAnalyzer:
             self.prev_flow_gray = None
             self.last_flow = None
             self.prev_temporal_diff_frame = None
+            self.prev_contour_boxes = []
+            self.prev_contour_centroids = []
+            self.last_static_contours = []
 
     def _apply_temporal_difference_filter(self, gray_img):
-        current = gray_img.astype(np.int16)
-        if self.prev_temporal_diff_frame is None or self.prev_temporal_diff_frame.shape != current.shape:
-            self.prev_temporal_diff_frame = current.copy()
+        if self.prev_temporal_diff_frame is None or self.prev_temporal_diff_frame.shape != gray_img.shape:
+            self.prev_temporal_diff_frame = gray_img.copy()
             return np.zeros(gray_img.shape, dtype=np.uint8)
 
-        delta = current - self.prev_temporal_diff_frame
-        self.prev_temporal_diff_frame = current.copy()
+        if self.temporal_diff_u8 is None or self.temporal_diff_u8.shape != gray_img.shape:
+            self.temporal_diff_u8 = np.empty_like(gray_img)
 
-        if self.temporal_diff_polarity == "positive":
-            out = np.clip(delta, 0, 255)
-        elif self.temporal_diff_polarity == "negative":
-            out = np.clip(-delta, 0, 255)
-        else:
-            out = np.clip(np.abs(delta), 0, 255)
+        if self.temporal_diff_polarity == "both":
+            cv2.absdiff(gray_img, self.prev_temporal_diff_frame, dst=self.temporal_diff_u8)
+        elif self.temporal_diff_polarity == "positive":
+            cv2.subtract(gray_img, self.prev_temporal_diff_frame, dst=self.temporal_diff_u8)
+        else:  # "negative"
+            cv2.subtract(self.prev_temporal_diff_frame, gray_img, dst=self.temporal_diff_u8)
 
-        out_u8 = out.astype(np.uint8)
-        if not self.temporal_diff_auto_gain:
-            return out_u8
-
-        nonzero = out_u8[out_u8 > 0]
-        if nonzero.size == 0:
-            return out_u8
-
-        p95 = float(np.percentile(nonzero, 95.0))
-        if p95 < 1e-6:
-            return out_u8
-
-        gain = min(self.temporal_diff_max_gain, max(1.0, self.temporal_diff_target_level / p95))
-        boosted = np.clip(out_u8.astype(np.float32) * gain, 0.0, 255.0)
-        return boosted.astype(np.uint8)
+        self.prev_temporal_diff_frame = gray_img.copy()
+        return self.temporal_diff_u8
 
     def set_flow_quality(
         self,
@@ -221,36 +226,96 @@ class WaveAnalyzer:
         self.mask_points = points if points and len(points) == 4 else None
 
     @staticmethod
-    def _screen_blend_self(gray_img):
-        base_float = gray_img.astype(np.float32) / 255.0
-        result_float = 1.0 - ((1.0 - base_float) * (1.0 - base_float))
-        return np.clip(result_float * 255.0, 0.0, 255.0).astype(np.uint8)
+    def _contour_centroid_px(contour):
+        moms = cv2.moments(contour)
+        if moms['m00'] > 1e-6:
+            return float(moms['m10'] / moms['m00']), float(moms['m01'] / moms['m00'])
+        x, y, w, h = cv2.boundingRect(contour)
+        return float(x + 0.5 * w), float(y + 0.5 * h)
+
+    def _split_contours_by_linearity(self, contours):
+        if not contours:
+            return [], []
+
+        min_line_len_px = float(max(10.0, self.contour_motion_threshold_px))
+        blob_like = []
+        straight_like = []
+
+        for contour in contours:
+            if contour is None or len(contour) < 2:
+                blob_like.append(contour)
+                continue
+
+            pts = contour.reshape(-1, 2).astype(np.float32)
+            if pts.shape[0] < 2:
+                blob_like.append(contour)
+                continue
+
+            vx, vy, x0, y0 = cv2.fitLine(contour, cv2.DIST_L2, 0, 0.01, 0.01).flatten()
+            direction = np.array([float(vx), float(vy)], dtype=np.float32)
+            dir_norm = float(np.linalg.norm(direction))
+            if dir_norm <= 1e-6:
+                blob_like.append(contour)
+                continue
+            direction /= dir_norm
+            normal = np.array([-direction[1], direction[0]], dtype=np.float32)
+
+            origin = np.array([float(x0), float(y0)], dtype=np.float32)
+            rel = pts - origin
+            proj = rel @ direction
+            perp = np.abs(rel @ normal)
+
+            line_len = float(np.max(proj) - np.min(proj)) if proj.size else 0.0
+            perp_p90 = float(np.percentile(perp, 90.0)) if perp.size else 1e9
+
+            _, (w_rect, h_rect), _ = cv2.minAreaRect(contour)
+            major = float(max(w_rect, h_rect, 1.0))
+            minor = float(max(min(w_rect, h_rect), 1.0))
+            aspect = major / minor
+
+            is_straight_line = (
+                line_len >= min_line_len_px
+                and perp_p90 <= max(2.5, 0.10 * line_len)
+                and aspect >= 3.0
+            )
+
+            if is_straight_line:
+                straight_like.append(contour)
+            else:
+                blob_like.append(contour)
+
+        return blob_like, straight_like
+
+    def _screen_blend_self(self, gray_img):
+        # Screen blend via LUT avoids per-pixel float math each frame.
+        if self.screen_blend_mode <= 0:
+            return gray_img
+        if self.screen_blend_mode == 1:
+            return cv2.LUT(gray_img, self.screen_blend_lut)
+        return cv2.LUT(gray_img, self.screen_blend_lut_2x)
 
     def _apply_temporal_change_filter(self, gray_img):
-        blurred = cv2.blur(gray_img, self.temporal_blur_kernel)
-        current_float = blurred.astype(np.float32)
-
-        # --- slow EMA: converges to static background over ~temporal_filter_seconds ---
-        alpha_slow = 1.0 / max(1.0, self.fps * self.temporal_filter_seconds)
-        if self.prev_temporal_lpf_float is None or self.prev_temporal_lpf_float.shape != current_float.shape:
-            self.prev_temporal_lpf_float = current_float.copy()
-        self.prev_temporal_lpf_float = (
-            alpha_slow * current_float
-            + (1.0 - alpha_slow) * self.prev_temporal_lpf_float
-        )
-
-        # --- fast EMA: smooths per-frame noise, still follows wave motion ---
-        alpha_fast = 1.0 / max(1.0, self.fps * self.temporal_filter_fast_seconds)
-        if self.prev_temporal_fast_float is None or self.prev_temporal_fast_float.shape != current_float.shape:
-            self.prev_temporal_fast_float = current_float.copy()
-        self.prev_temporal_fast_float = (
-            alpha_fast * current_float
-            + (1.0 - alpha_fast) * self.prev_temporal_fast_float
-        )
-
-        # Bandpass = fast_EMA - slow_EMA: retains only the wave-frequency band.
-        diff = np.clip(self.prev_temporal_fast_float - self.prev_temporal_lpf_float, 0.0, 255.0).astype(np.uint8)
-        return diff
+        # First-order IIR lowpass: y = alpha * x + (1 - alpha) * y_prev
+        alpha = 1.0 / max(1.0, self.fps * self.temporal_filter_seconds)
+        if self.prev_temporal_float is None or self.prev_temporal_float.shape != gray_img.shape:
+            self.prev_temporal_float = gray_img.astype(np.float32)
+            self.prev_temporal_u8 = gray_img.copy()
+            self.temporal_change_u8 = np.zeros_like(gray_img)
+            if self.temporal_filter_output_mode == "lowpass":
+                return self.prev_temporal_u8
+            # Return zeros on first frame in change mode (no change history yet)
+            return self.temporal_change_u8
+        if self.prev_temporal_u8 is None or self.prev_temporal_u8.shape != gray_img.shape:
+            self.prev_temporal_u8 = np.empty_like(gray_img)
+        if self.temporal_change_u8 is None or self.temporal_change_u8.shape != gray_img.shape:
+            self.temporal_change_u8 = np.empty_like(gray_img)
+        # OpenCV accepts uint8 input here; avoid a full-frame float conversion on every frame.
+        cv2.accumulateWeighted(gray_img, self.prev_temporal_float, alpha)
+        cv2.convertScaleAbs(self.prev_temporal_float, dst=self.prev_temporal_u8)
+        if self.temporal_filter_output_mode == "lowpass":
+            return self.prev_temporal_u8
+        cv2.subtract(gray_img, self.prev_temporal_u8, dst=self.temporal_change_u8)
+        return self.temporal_change_u8
 
     def _mask_and_preprocess(self, gray):
         stage_times = {
@@ -276,8 +341,9 @@ class WaveAnalyzer:
             stage_times["temporal_filter_ms"] = (perf_counter() - t_temporal) * 1000.0
 
         else:
-            self.prev_temporal_lpf_float = None
-            self.prev_temporal_fast_float = None
+            self.prev_temporal_float = None
+            self.prev_temporal_u8 = None
+            self.temporal_change_u8 = None
 
         if self.enable_temporal_difference_filter:
             t_temporal_diff = perf_counter()
@@ -285,25 +351,43 @@ class WaveAnalyzer:
             stage_times["temporal_diff_ms"] = (perf_counter() - t_temporal_diff) * 1000.0
         else:
             self.prev_temporal_diff_frame = None
+            self.prev_contour_boxes = []
+            self.prev_contour_centroids = []
+            self.last_static_contours = []
+            self.temporal_diff_u8 = None
 
-        if self.enable_screen_blend_equalization:
+        if self.screen_blend_mode > 0:
             t_screen = perf_counter()
             source = self._screen_blend_self(source)
             stage_times["screen_blend_ms"] = (perf_counter() - t_screen) * 1000.0
 
         # Keep source tonal structure intact so temporal/screen filters are visually and analytically meaningful.
         roi_gray = cv2.bitwise_and(source, source, mask=mask)
-        if self.enable_preprocess_blur:
+        if self.blur_mode > 0:
             t_blur = perf_counter()
-            blur = cv2.GaussianBlur(roi_gray, (5, 5), 0)
+            kernel = self.preprocess_blur_kernel_small if self.blur_mode == 1 else self.preprocess_blur_kernel_large
+            blur = cv2.GaussianBlur(roi_gray, kernel, 0)
             stage_times["pre_blur_ms"] = (perf_counter() - t_blur) * 1000.0
         else:
             blur = roi_gray
 
-        preprocess_display = cv2.bitwise_and(blur, blur, mask=mask)
+        # Gain stage before thresholding.
+        if self.gain_mode == 0:
+            gain_img = blur
+        elif self.gain_mode == 1:
+            gain_img = cv2.convertScaleAbs(blur, alpha=0.75, beta=0)
+        elif self.gain_mode == 2:
+            gain_img = cv2.convertScaleAbs(blur, alpha=1.50, beta=0)
+        else:  # autogain: stretch 95th percentile to ~220
+            nz = blur[blur > 0]
+            p95 = float(np.percentile(nz, 95)) if nz.size > 0 else 1.0
+            auto_alpha = min(8.0, 220.0 / max(p95, 1.0))
+            gain_img = cv2.convertScaleAbs(blur, alpha=auto_alpha, beta=0)
 
-        _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        edges = cv2.Canny(blur, 40, 120)
+        preprocess_display = cv2.bitwise_and(gain_img, gain_img, mask=mask)
+
+        _, thresh = cv2.threshold(gain_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        edges = cv2.Canny(gain_img, 40, 120)
         thresh = cv2.bitwise_and(thresh, thresh, mask=mask)
         edges = cv2.bitwise_and(edges, edges, mask=mask)
 
@@ -314,14 +398,21 @@ class WaveAnalyzer:
     def _analyze_contours(self, thresh, mask):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         valid = [c for c in contours if cv2.contourArea(c) >= self.contour_min_area]
-        self.last_contours = valid
+        # Split into blob-like contours and long straight-line contours.
+        blob_contours, straight_line_contours = self._split_contours_by_linearity(valid)
+        # Keep existing key names for compatibility with current UI wiring.
+        self.last_static_contours = straight_line_contours
+        self.last_contours = blob_contours
 
-        areas = np.array([cv2.contourArea(c) for c in valid], dtype=np.float32)
+        areas = np.array([cv2.contourArea(c) for c in blob_contours], dtype=np.float32)
         if areas.size == 0:
             return {
                 "common": 0.0,
                 "median": 0.0,
                 "spread": 0.0,
+                "max": 0.0,
+                "centroid": 0.0,
+                "shape_roundness": 0.0,
                 "count": 0,
                 "fill_ratio": 0.0,
                 "stability": 0.0,
@@ -329,11 +420,33 @@ class WaveAnalyzer:
 
         hist, bins = np.histogram(areas, bins=min(16, max(4, int(np.sqrt(areas.size) + 1))))
         mode_bin = int(np.argmax(hist))
-        common = float((bins[mode_bin] + bins[mode_bin + 1]) * 0.5)
-        median = float(np.median(areas))
-        q75 = float(np.quantile(areas, 0.75))
-        q25 = float(np.quantile(areas, 0.25))
+
+        # Normalize contour area metrics to full image area for scale invariance.
+        img_pixels = float(thresh.shape[0] * thresh.shape[1])
+        area_norm = 1.0 / max(img_pixels, 1.0)
+
+        common = float((bins[mode_bin] + bins[mode_bin + 1]) * 0.5) * area_norm
+        median = float(np.median(areas)) * area_norm
+        q75 = float(np.quantile(areas, 0.75)) * area_norm
+        q25 = float(np.quantile(areas, 0.25)) * area_norm
         spread = max(0.0, q75 - q25)
+        max_area = float(np.max(areas)) * area_norm
+        # Size centroid: center of bump-size distribution (mean normalized contour area).
+        centroid = float(np.mean(areas)) * area_norm
+
+        # Shape roundness score: 1.0 for round contours, 0.0 for very line-like contours.
+        roundness_weighted = 0.0
+        roundness_weight_sum = 0.0
+        for contour, area in zip(blob_contours, areas):
+            if area <= 0.0:
+                continue
+            perimeter = float(cv2.arcLength(contour, True))
+            if perimeter <= 1e-6:
+                continue
+            circularity = _clip01((4.0 * np.pi * float(area)) / (perimeter * perimeter))
+            roundness_weighted += circularity * float(area)
+            roundness_weight_sum += float(area)
+        shape_roundness = (roundness_weighted / roundness_weight_sum) if roundness_weight_sum > 0.0 else 0.0
 
         mask_pixels = float(np.count_nonzero(mask))
         fill_ratio = float(np.sum(areas) / mask_pixels) if mask_pixels > 0 else 0.0
@@ -345,6 +458,9 @@ class WaveAnalyzer:
             "common": common,
             "median": median,
             "spread": spread,
+            "max": max_area,
+            "centroid": centroid,
+            "shape_roundness": shape_roundness,
             "count": int(areas.size),
             "fill_ratio": fill_ratio,
             "stability": stability,
@@ -355,7 +471,24 @@ class WaveAnalyzer:
             return [h // 2]
         return [int((idx + 1) * h / (self.slit_count + 1)) for idx in range(self.slit_count)]
 
-    def _temporal_fft_from_history(self, history):
+    @staticmethod
+    def _gentle_edge_window(length, taper_fraction=0.2):
+        if length <= 1:
+            return np.ones(max(1, length), dtype=np.float32)
+
+        taper = int(max(1, round(length * taper_fraction)))
+        taper = min(taper, max(1, length // 2))
+        win = np.ones(length, dtype=np.float32)
+
+        if taper <= 1:
+            return win
+
+        ramp = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, taper, dtype=np.float32)))
+        win[:taper] = ramp
+        win[-taper:] = ramp[::-1]
+        return win
+
+    def _temporal_fft_from_history(self, history, sample_rate_hz=None):
         if len(history) < 12:
             return 0.0, np.array([]), np.array([])
 
@@ -364,13 +497,38 @@ class WaveAnalyzer:
         sig *= np.hanning(len(sig))
 
         ytf = np.abs(rfft(sig))
-        xtf = rfftfreq(len(sig), 1.0 / self.fps)
+        fs = float(sample_rate_hz) if sample_rate_hz is not None else self.fps
+        fs = max(1e-6, fs)
+        xtf = rfftfreq(len(sig), 1.0 / fs)
         valid = xtf > 0.05
         peak = 0.0
         if np.any(valid):
             peak_idx = int(np.argmax(ytf[valid]))
             peak = float(xtf[valid][peak_idx])
         return peak, xtf, ytf
+
+    @staticmethod
+    def _quadrant_centers(h, w):
+        row_top = h // 4
+        row_bot = (3 * h) // 4
+        col_left = w // 4
+        col_right = (3 * w) // 4
+        return [
+            ("TL", row_top, col_left),
+            ("TR", row_top, col_right),
+            ("BL", row_bot, col_left),
+            ("BR", row_bot, col_right),
+        ]
+
+    def _update_temporal_histories(self, roi_gray):
+        h, w = roi_gray.shape
+        centers = self._quadrant_centers(h, w)
+        points = {}
+        for i, (label, row, col) in enumerate(centers):
+            patch = roi_gray[max(0, row - 2) : min(h, row + 3), max(0, col - 2) : min(w, col + 3)]
+            self.slit_history[i].append(float(np.mean(patch)))
+            points[label] = {"x": int(col), "y": int(row)}
+        return points
 
     @staticmethod
     def _quadrant_spatial_summary(roi_gray):
@@ -428,160 +586,124 @@ class WaveAnalyzer:
 
         return out
 
-    def _analyze_slits(self, roi_gray):
+    def _analyze_slits(self, roi_gray, update_temporal_history=True):
         h, w = roi_gray.shape
-        rows = self._slit_rows(h)
+
+        # Fixed slit positions at quadrant center lines (25% / 75%).
+        row_top  = h // 4
+        row_bot  = (3 * h) // 4
+        col_left  = w // 4
+        col_right = (3 * w) // 4
+        slit_rows = [row_top, row_bot]
+        slit_cols = [col_left, col_right]
+        win_x = self._gentle_edge_window(w, taper_fraction=0.2)
+        win_y = self._gentle_edge_window(h, taper_fraction=0.2)
+
+        # --- Spatial: 2 horizontal slits (top / bottom) ---
         spatial_peaks = []
         low_energy = 0.0
         mid_energy = 0.0
         high_energy = 0.0
         spatial_xf = np.array([])
         spatial_yf_accum = None
+        horizontal_spectra = []
 
-        for idx, row in enumerate(rows):
-            slit = roi_gray[row : row + 1, :].flatten().astype(np.float32)
+        for row in slit_rows:
+            slit_u8 = roi_gray[row, :].copy()
+            slit = slit_u8.astype(np.float32)
             slit -= float(np.mean(slit))
-            slit *= np.hanning(len(slit))
-
+            slit *= win_x
             yf = np.abs(rfft(slit))
-            xf = rfftfreq(len(slit), 1.0)
-            spatial_xf = xf * w
+            xf = rfftfreq(len(slit), 1.0) * w   # cycles per image width
+            spatial_xf = xf
+            horizontal_spectra.append({"row": int(row), "xf": xf, "yf": yf, "samples": slit_u8})
             if spatial_yf_accum is None:
                 spatial_yf_accum = np.zeros_like(yf, dtype=np.float32)
             spatial_yf_accum += yf.astype(np.float32)
-
             if len(yf) > 1:
                 peak_idx = int(np.argmax(yf[1:]) + 1)
-                spatial_peaks.append(float(xf[peak_idx] * w))
-
-            self.slit_history[idx].append(float(np.mean(roi_gray[max(0, row - 1) : min(h, row + 2), :])))
-
-            low_mask = (xf * w >= 0.5) & (xf * w < 3.0)
-            mid_mask = (xf * w >= 3.0) & (xf * w < 8.0)
-            high_mask = (xf * w >= 8.0) & (xf * w <= 20.0)
-            low_energy += float(np.sum(yf[low_mask]))
-            mid_energy += float(np.sum(yf[mid_mask]))
+                spatial_peaks.append(float(xf[peak_idx]))
+            low_mask  = (xf >= 0.5) & (xf < 3.0)
+            mid_mask  = (xf >= 3.0) & (xf < 8.0)
+            high_mask = (xf >= 8.0) & (xf <= 20.0)
+            low_energy  += float(np.sum(yf[low_mask]))
+            mid_energy  += float(np.sum(yf[mid_mask]))
             high_energy += float(np.sum(yf[high_mask]))
 
+        # --- Spatial: 2 vertical slits (left / right) ---
+        vertical_spectra = []
+        for col in slit_cols:
+            slit_u8 = roi_gray[:, col].copy()
+            slit = slit_u8.astype(np.float32)
+            slit -= float(np.mean(slit))
+            slit *= win_y
+            yf = np.abs(rfft(slit))
+            xf_v = rfftfreq(len(slit), 1.0) * h  # cycles per image height
+            vertical_spectra.append({"col": int(col), "xf": xf_v, "yf": yf, "samples": slit_u8})
+            if len(yf) > 1:
+                peak_idx = int(np.argmax(yf[1:]) + 1)
+                spatial_peaks.append(float(xf_v[peak_idx]))
+            low_mask  = (xf_v >= 0.5) & (xf_v < 3.0)
+            mid_mask  = (xf_v >= 3.0) & (xf_v < 8.0)
+            high_mask = (xf_v >= 8.0) & (xf_v <= 20.0)
+            low_energy  += float(np.sum(yf[low_mask]))
+            mid_energy  += float(np.sum(yf[mid_mask]))
+            high_energy += float(np.sum(yf[high_mask]))
+
+        # --- Temporal: 4 quadrant center points (TL, TR, BL, BR) ---
+        quadrant_centers = self._quadrant_centers(h, w)
+        if update_temporal_history:
+            quadrant_points = self._update_temporal_histories(roi_gray)
+        else:
+            quadrant_points = {label: {"x": int(col), "y": int(row)} for label, row, col in quadrant_centers}
         temporal_freqs = []
         temporal_xf = np.array([])
         temporal_yf = np.array([])
-        for history in self.slit_history:
-            peak, xtf, ytf = self._temporal_fft_from_history(history)
-            if peak > 0.0:
-                temporal_freqs.append(peak)
-            if len(xtf) > 0:
-                temporal_xf = xtf
-                temporal_yf = ytf
-
-        spatial_yf = (
-            spatial_yf_accum / float(len(rows))
-            if spatial_yf_accum is not None and len(rows) > 0
-            else np.array([])
-        )
-        quadrant_summaries = self._quadrant_spatial_summary(roi_gray)
-
-        total_energy = low_energy + mid_energy + high_energy + 1e-6
-        return {
-            "spatial_peak_common": float(np.median(spatial_peaks)) if spatial_peaks else 0.0,
-            "temporal_peak_common": float(np.median(temporal_freqs)) if temporal_freqs else 0.0,
-            "band_low": low_energy / total_energy,
-            "band_mid": mid_energy / total_energy,
-            "band_high": high_energy / total_energy,
-            "spatial_xf": spatial_xf,
-            "spatial_yf": spatial_yf,
-            "quadrant_summaries": quadrant_summaries,
-            "slit_rows": [int(r) for r in rows],
-            "temporal_xf": temporal_xf,
-            "temporal_yf": temporal_yf,
-        }
-
-    def _analyze_fft2(self, roi_gray):
-        h, w = roi_gray.shape
-        if h < 8 or w < 8:
-            return {
-                "spatial_peak_common": 0.0,
-                "temporal_peak_common": 0.0,
-                "band_low": 0.0,
-                "band_mid": 0.0,
-                "band_high": 0.0,
-                "spatial_xf": np.array([]),
-                "spatial_yf": np.array([]),
-                "quadrant_summaries": self._quadrant_spatial_summary(roi_gray),
-                "slit_rows": [],
-                "temporal_xf": np.array([]),
-                "temporal_yf": np.array([]),
-            }
-
-        img = roi_gray.astype(np.float32)
-        img -= float(np.mean(img))
-        win2d = np.outer(np.hanning(h), np.hanning(w)).astype(np.float32)
-        img *= win2d
-
-        spec2 = np.fft.fftshift(np.fft.fft2(img))
-        mag = np.abs(spec2)
-
-        fx = np.fft.fftshift(np.fft.fftfreq(w)) * w
-        fy = np.fft.fftshift(np.fft.fftfreq(h)) * h
-        fxx, fyy = np.meshgrid(fx, fy)
-        radial = np.sqrt(fxx * fxx + fyy * fyy)
-
-        max_cf = 20.0
-        bins = np.linspace(0.0, max_cf, 129)
-        bin_centers = 0.5 * (bins[:-1] + bins[1:])
-
-        idx = np.digitize(radial.ravel(), bins) - 1
-        valid = (idx >= 0) & (idx < len(bin_centers))
-        idx = idx[valid]
-        weights = mag.ravel()[valid]
-
-        sums = np.bincount(idx, weights=weights, minlength=len(bin_centers)).astype(np.float32)
-        counts = np.bincount(idx, minlength=len(bin_centers)).astype(np.float32)
-        spatial_yf = sums / np.maximum(counts, 1.0)
-        spatial_xf = bin_centers
-
-        low_mask = (spatial_xf >= 0.5) & (spatial_xf < 3.0)
-        mid_mask = (spatial_xf >= 3.0) & (spatial_xf < 8.0)
-        high_mask = (spatial_xf >= 8.0) & (spatial_xf <= 20.0)
-        low_energy = float(np.sum(spatial_yf[low_mask]))
-        mid_energy = float(np.sum(spatial_yf[mid_mask]))
-        high_energy = float(np.sum(spatial_yf[high_mask]))
-        total_energy = low_energy + mid_energy + high_energy + 1e-6
-
-        peak_common = 0.0
-        valid_peak = spatial_xf >= 0.5
-        if np.any(valid_peak):
-            peak_idx = int(np.argmax(spatial_yf[valid_peak]))
-            peak_common = float(spatial_xf[valid_peak][peak_idx])
-
-        # Temporal analysis: use the same slit time-history method as _analyze_slits.
-        rows = self._slit_rows(h)
-        for idx, row in enumerate(rows):
-            self.slit_history[idx].append(float(np.mean(roi_gray[max(0, row - 1) : min(h, row + 2), :])))
-
-        temporal_freqs = []
-        temporal_xf = np.array([])
-        temporal_yf = np.array([])
-        for history in self.slit_history:
-            tpeak, xtf, ytf = self._temporal_fft_from_history(history)
+        quadrant_temporal = {}
+        for i, (label, row, col) in enumerate(quadrant_centers):
+            tpeak, xtf, ytf = self._temporal_fft_from_history(self.slit_history[i], sample_rate_hz=self.fps)
+            quadrant_temporal[label] = {"peak": tpeak, "xf": xtf, "yf": ytf}
             if tpeak > 0.0:
                 temporal_freqs.append(tpeak)
             if len(xtf) > 0:
                 temporal_xf = xtf
                 temporal_yf = ytf
 
+        spatial_yf = (
+            spatial_yf_accum / 2.0
+            if spatial_yf_accum is not None
+            else np.array([])
+        )
+        quadrant_summaries = self._quadrant_spatial_summary(roi_gray)
+        total_energy = low_energy + mid_energy + high_energy + 1e-6
+
+        temporal_centroid_hz = 0.0
+        if temporal_xf.size > 0 and temporal_yf.size > 0:
+            valid_t = temporal_xf > 0.05
+            if np.any(valid_t):
+                weights_t = temporal_yf[valid_t]
+                weight_sum = float(np.sum(weights_t))
+                if weight_sum > 1e-9:
+                    temporal_centroid_hz = float(np.sum(temporal_xf[valid_t] * weights_t) / weight_sum)
+
         return {
-            "spatial_peak_common": peak_common,
+            "spatial_peak_common": float(np.median(spatial_peaks)) if spatial_peaks else 0.0,
             "temporal_peak_common": float(np.median(temporal_freqs)) if temporal_freqs else 0.0,
-            "band_low": low_energy / total_energy,
-            "band_mid": mid_energy / total_energy,
+            "temporal_centroid_hz": temporal_centroid_hz,
+            "band_low":  low_energy  / total_energy,
+            "band_mid":  mid_energy  / total_energy,
             "band_high": high_energy / total_energy,
             "spatial_xf": spatial_xf,
             "spatial_yf": spatial_yf,
-            "quadrant_summaries": self._quadrant_spatial_summary(roi_gray),
-            "slit_rows": [int(r) for r in rows],
+            "quadrant_summaries": quadrant_summaries,
+            "slit_rows": slit_rows,
+            "slit_cols": slit_cols,
             "temporal_xf": temporal_xf,
             "temporal_yf": temporal_yf,
+            "quadrant_temporal": quadrant_temporal,
+            "quadrant_points": quadrant_points,
+            "horizontal_spectra": horizontal_spectra,
+            "vertical_spectra": vertical_spectra,
         }
 
     def _analyze_flow(self, roi_gray):
@@ -664,8 +786,12 @@ class WaveAnalyzer:
     def _fuse(self, contours, slits, flow):
         raw = {
             "wave_frequency_hz": slits["temporal_peak_common"],
+            "freq_centroid_hz": slits.get("temporal_centroid_hz", 0.0),
             "bump_size_common": contours["common"],
             "bump_size_spread": contours["spread"],
+            "bump_size_max": contours.get("max", 0.0),
+            "bump_size_centroid": contours.get("centroid", 0.0),
+            "bump_shape_roundness": contours.get("shape_roundness", 0.0),
             "movement_direction_deg": flow["direction_deg"],
             "movement_speed_norm": flow["speed_norm"],
             "activity": _clip01(0.45 * flow["activity"] + 0.55 * min(1.0, contours["fill_ratio"] * 4.0)),
@@ -674,8 +800,12 @@ class WaveAnalyzer:
 
         smoothed = {
             "wave_frequency_hz": self._ema("wave_frequency_hz", raw["wave_frequency_hz"], attack=0.28, release=0.08),
+            "freq_centroid_hz": self._ema("freq_centroid_hz", raw["freq_centroid_hz"], attack=0.24, release=0.08),
             "bump_size_common": self._ema("bump_size_common", raw["bump_size_common"], attack=0.24, release=0.06),
             "bump_size_spread": self._ema("bump_size_spread", raw["bump_size_spread"], attack=0.2, release=0.05),
+            "bump_size_max": self._ema("bump_size_max", raw["bump_size_max"], attack=0.24, release=0.06),
+            "bump_size_centroid": self._ema("bump_size_centroid", raw["bump_size_centroid"], attack=0.2, release=0.08),
+            "bump_shape_roundness": self._ema("bump_shape_roundness", raw["bump_shape_roundness"], attack=0.24, release=0.1),
             "movement_direction_deg": raw["movement_direction_deg"],
             "movement_speed_norm": self._ema("movement_speed_norm", raw["movement_speed_norm"], attack=0.32, release=0.12),
             "activity": self._ema("activity", raw["activity"], attack=0.3, release=0.1),
@@ -699,6 +829,9 @@ class WaveAnalyzer:
             "common": self.smoothed["bump_size_common"],
             "median": self.smoothed["bump_size_common"],
             "spread": self.smoothed["bump_size_spread"],
+            "max": self.smoothed["bump_size_max"],
+            "centroid": self.smoothed["bump_size_centroid"],
+            "shape_roundness": self.smoothed["bump_shape_roundness"],
             "count": len(self.last_contours),
             "fill_ratio": 0.0,
             "stability": self.smoothed["confidence"],
@@ -708,17 +841,27 @@ class WaveAnalyzer:
         t2 = perf_counter()
         # Tap spectral analysis after blur, as requested.
         if run_full:
-            if self.spectral_mode == "fft2":
-                slit_data = self._analyze_fft2(blur)
-            else:
-                slit_data = self._analyze_slits(blur)
+            # Keep all temporal samples, independent of FFT recompute cadence.
+            self._update_temporal_histories(blur)
+        spectral_interval_s = 1.0 / max(0.1, float(self.spectral_update_hz))
+        now_s = perf_counter()
+        run_spectral = (
+            run_full and (
+                self.last_slit_data is None
+                or (now_s - self.last_spectral_update_t) >= spectral_interval_s
+            )
+        )
+        if run_spectral:
+            slit_data = self._analyze_slits(blur, update_temporal_history=False)
             self.last_slit_data = slit_data
+            self.last_spectral_update_t = now_s
         elif self.last_slit_data is not None:
             slit_data = self.last_slit_data
         else:
             slit_data = {
                 "spatial_peak_common": 0.0,
                 "temporal_peak_common": self.smoothed["wave_frequency_hz"],
+                "temporal_centroid_hz": self.smoothed["freq_centroid_hz"],
                 "band_low": 0.0,
                 "band_mid": 0.0,
                 "band_high": 0.0,
@@ -731,8 +874,10 @@ class WaveAnalyzer:
                     "LR": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
                 },
                 "slit_rows": [],
+                "slit_cols": [],
                 "temporal_xf": np.array([]),
                 "temporal_yf": np.array([]),
+                "quadrant_temporal": {},
             }
         timers["slits_ms"] = (perf_counter() - t2) * 1000.0
 
@@ -753,6 +898,7 @@ class WaveAnalyzer:
             "edges": edges,
             "preprocess_display": preprocess_display,
             "contours": self.last_contours,
+            "static_contours": self.last_static_contours,
             "contour_data": contour_data,
             "slit_data": slit_data,
             "flow_data": flow_data,
