@@ -216,6 +216,7 @@ def draw_status_hud(
     switches,
     profile_stats,
     show_cpu_profile,
+    flow_data=None,
 ):
     hud = frame.copy()
     color = (235, 235, 235)
@@ -228,6 +229,11 @@ def draw_status_hud(
         f"bump ctr(size) {smooth['bump_size_centroid'] * 100.0:.2f}% shape {smooth['bump_shape_roundness']:.2f}",
         f"dir {smooth['movement_direction_deg']:.1f} deg spd {smooth['movement_speed_norm']:.2f}",
         f"act {smooth['activity']:.2f} conf {smooth['confidence']:.2f}",
+    ]
+    fd = flow_data or {}
+    signal_lines += [
+        f"flow fast: act {fd.get('fast_activity', 0.0):.2f}  spd {fd.get('fast_speed_norm', 0.0):.2f}  dir {fd.get('fast_direction_deg', 0.0):.0f}  coh {fd.get('fast_coherence', 0.0):.2f}",
+        f"flow slow: act {fd.get('slow_activity', 0.0):.2f}  spd {fd.get('slow_speed_norm', 0.0):.2f}  dir {fd.get('slow_direction_deg', 0.0):.0f}  coh {fd.get('slow_coherence', 0.0):.2f}",
     ]
 
     draw_text_block(
@@ -279,13 +285,11 @@ def draw_status_hud(
         f"[H] temporal diff: {'on' if switches['temporal_diff_filter'] else 'off'}",
         f"[G] tdiff polarity: {switches['temporal_diff_polarity']}",
         f"[E] screen: {switches['screen_blend_label']}",
-        f"[B] blur: {switches['pre_blur_label']}",
         f"[A] gain: {switches['gain_label']}",
-        f"[R] threshold overlay: {'on' if switches['threshold_overlay'] else 'off'}",
+        f"[B] blur: {switches['pre_blur_label']}",
+        f"[R] threshold: {'on' if switches['threshold_overlay'] else 'off'}",
         f"[C] contour overlay: {'on' if switches['contour_overlay'] else 'off'}",
-        f"[X] blob contours: {'on' if switches['contour_motion_filter'] else 'off'}",
         f"[U] line min len: {switches['contour_motion_threshold_label']}",
-        f"[Z] straight lines: {'on' if switches['static_contours'] else 'off'}",
         f"[S] spectrum overlay: {'on' if switches['spectrum_overlay'] else 'off'}",
         f"[Y] cpu profile: {'on' if show_cpu_profile else 'off'}",
         f"[V] flow overlay: {'on' if switches['flow_overlay'] else 'off'}",
@@ -340,14 +344,12 @@ def draw_status_hud(
     return hud
 
 
-def draw_flow_overlay(frame, flow):
+def draw_flow_overlay(frame, flow, color=(30, 180, 255), disp_scale=2.0):
     if flow is None:
         return frame
     out = frame.copy()
     h, w = out.shape[:2]
     fh, fw = flow.shape[:2]
-    # Sample every 2nd point in both X and Y relative to previous density.
-    # This halves visible point density per axis (quarter total vectors).
     step = 16
     sx = w / float(fw)
     sy = h / float(fh)
@@ -357,8 +359,8 @@ def draw_flow_overlay(frame, flow):
         for x in range(0, fw, step):
             dx, dy = flow[y, x]
             p0 = (int(x * sx), int(y * sy))
-            p1 = (int((x + dx * 2.0) * sx), int((y + dy * 2.0) * sy))
-            cv2.line(out, p0, p1, (30, 180, 255), line_thickness)
+            p1 = (int((x + dx * disp_scale) * sx), int((y + dy * disp_scale) * sy))
+            cv2.line(out, p0, p1, color, line_thickness)
     return out
 
 
@@ -382,7 +384,7 @@ def _quadrant_vector_stats(flow_block):
     return direction_deg, strength, True
 
 
-def draw_quadrant_flow_arrows(frame, flow):
+def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_color=(120, 220, 255), circle_color=(220, 220, 220)):
     if flow is None:
         return frame
 
@@ -403,7 +405,6 @@ def draw_quadrant_flow_arrows(frame, flow):
         direction_deg, strength, has_motion = _quadrant_vector_stats(block)
         radius = 34
         diameter = radius * 2
-        # Offset each quadrant marker diagonally toward its image corner by 60% of one circle diameter.
         offset = int(round(diameter * 0.6))
         corner_dx = -offset if center[0] < (w * 0.5) else offset
         corner_dy = -offset if center[1] < (h * 0.5) else offset
@@ -411,26 +412,26 @@ def draw_quadrant_flow_arrows(frame, flow):
         c_y = int(np.clip(center[1] + corner_dy, radius + 2, h - radius - 2))
         shifted_center = (c_x, c_y)
 
-        cv2.circle(out, shifted_center, radius, (220, 220, 220), 1)
+        cv2.circle(out, shifted_center, radius, circle_color, 1)
 
         if has_motion:
             arrow_len = int(np.clip(16 + strength * 8.0, 16, 44))
             dx = int(np.cos(np.radians(direction_deg)) * arrow_len)
             dy = int(np.sin(np.radians(direction_deg)) * arrow_len)
-            cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), (80, 190, 255), 2, tipLength=0.22)
+            cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), arrow_color, 2, tipLength=0.22)
 
         cv2.putText(out, label, (shifted_center[0] - 12, shifted_center[1] - radius - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (235, 235, 235), 1, cv2.LINE_AA)
 
-    # Global summary arrow (all quadrants combined) for local-vs-global comparison.
+    # Global summary arrow
     g_direction_deg, g_strength, g_has_motion = _quadrant_vector_stats(flow)
     g_center = (int(w * 0.5), int(h * 0.5))
     g_radius = 42
-    cv2.circle(out, g_center, g_radius, (240, 240, 240), 1)
+    cv2.circle(out, g_center, g_radius, circle_color, 1)
     if g_has_motion:
         g_len = int(np.clip(20 + g_strength * 10.0, 20, 56))
         g_dx = int(np.cos(np.radians(g_direction_deg)) * g_len)
         g_dy = int(np.sin(np.radians(g_direction_deg)) * g_len)
-        cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), (120, 220, 255), 3, tipLength=0.22)
+        cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), global_color, 3, tipLength=0.22)
     cv2.putText(out, "G", (g_center[0] - 7, g_center[1] - g_radius - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (245, 245, 245), 1, cv2.LINE_AA)
 
     return out
@@ -508,7 +509,13 @@ def draw_spectral_slits_overlay(frame, slit_data, roi_gray=None):
     return out
 
 
-def _draw_mini_spectrum(frame, xf, yf, x0, y0, plot_w=84, plot_h=54, max_freq=5.0, unit_label="", show_labels=True):
+# Band center frequencies and display colors for vertical sliders.
+_SPATIAL_BAND_CENTERS = [4.0, 10.0, 20.0]   # c/f
+_TEMPORAL_BAND_CENTERS = [1.0, 2.5, 6.0]    # Hz
+_BAND_COLORS = [(40, 40, 220), (40, 200, 40), (220, 40, 40)]  # BGR: red, green, blue
+
+
+def _draw_mini_spectrum(frame, xf, yf, x0, y0, plot_w=84, plot_h=54, max_freq=5.0, unit_label="", show_labels=True, band_amps=None, band_centers=None):
     h, w = frame.shape[:2]
     x0 = int(np.clip(x0, 0, max(0, w - plot_w)))
     y0 = int(np.clip(y0, 0, max(0, h - plot_h)))
@@ -547,6 +554,39 @@ def _draw_mini_spectrum(frame, xf, yf, x0, y0, plot_w=84, plot_h=54, max_freq=5.
         points.append((int(np.clip(px, left, right)), int(np.clip(py, top, bottom))))
     if len(points) >= 2:
         cv2.polylines(frame, [np.array(points, dtype=np.int32)], False, (210, 240, 120), 1)
+
+    # Draw bandpass amplitude sliders overlaid on the FFT plot.
+    if band_amps is not None and band_centers is not None and max_amp > 1e-9:
+        # Calibrate time-domain filter RMS outputs to FFT amplitude scale by
+        # matching each band to local FFT magnitude near its center frequency.
+        center_ratios = []
+        for center_f, amp_raw in zip(band_centers, band_amps):
+            if center_f <= 0.0 or center_f > max_freq:
+                continue
+            if amp_raw is None or amp_raw <= 1e-12:
+                continue
+            idx = int(np.argmin(np.abs(xf_plot - float(center_f))))
+            local_fft_amp = float(yf_plot[idx]) if 0 <= idx < len(yf_plot) else 0.0
+            if local_fft_amp > 1e-12:
+                center_ratios.append(local_fft_amp / float(amp_raw))
+
+        amp_scale = float(np.median(center_ratios)) if center_ratios else 1.0
+        amp_scale = float(np.clip(amp_scale, 1.0, 1e6))
+
+        slider_w = 5
+        for center_f, amp_raw, color in zip(band_centers, band_amps, _BAND_COLORS):
+            if center_f <= 0.0 or center_f > max_freq:
+                continue
+            amp_norm = (float(amp_raw) * amp_scale) / max_amp
+            sx = left + int((center_f / max_freq) * (right - left))
+            if color == _BAND_COLORS[2]:
+                sx -= slider_w // 2
+            sx = int(np.clip(sx, left, right))
+            bar_h = int(amp_norm * (bottom - top))
+            bar_h = max(2, min(bar_h, bottom - top))
+            rx0 = max(left, sx - slider_w // 2)
+            rx1 = min(right, sx + slider_w // 2 + 1)
+            cv2.rectangle(frame, (rx0, bottom - bar_h), (rx1, bottom), color, -1)
 
     if show_labels:
         # Frequency range labels: start / middle / end of displayed band.
@@ -595,16 +635,18 @@ def draw_local_spectral_plots(frame, slit_data):
             max_freq=20.0,
             unit_label="c/f",
             show_labels=(idx == 0),
+            band_amps=spec.get("bands"),
+            band_centers=_SPATIAL_BAND_CENTERS,
         )
 
     # Spatial spectra for vertical slits: bottom, beside each slit.
     v_specs = slit_data.get("vertical_spectra", [])
     if len(v_specs) >= 1:
         left_col = int(np.clip(v_specs[0].get("col", slit_cols[0] if slit_cols else 0), 0, w - 1))
-        _draw_mini_spectrum(out, v_specs[0].get("xf", np.array([])), v_specs[0].get("yf", np.array([])), left_col + 5, h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False)
+        _draw_mini_spectrum(out, v_specs[0].get("xf", np.array([])), v_specs[0].get("yf", np.array([])), left_col + 5, h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False, band_amps=v_specs[0].get("bands"), band_centers=_SPATIAL_BAND_CENTERS)
     if len(v_specs) >= 2:
         right_col = int(np.clip(v_specs[1].get("col", slit_cols[1] if len(slit_cols) > 1 else w - 1), 0, w - 1))
-        _draw_mini_spectrum(out, v_specs[1].get("xf", np.array([])), v_specs[1].get("yf", np.array([])), right_col - (plot_w + 5), h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False)
+        _draw_mini_spectrum(out, v_specs[1].get("xf", np.array([])), v_specs[1].get("yf", np.array([])), right_col - (plot_w + 5), h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False, band_amps=v_specs[1].get("bands"), band_centers=_SPATIAL_BAND_CENTERS)
 
     # Temporal spectra near quadrant points, nudged toward image center with 5 px gap.
     qp = slit_data.get("quadrant_points", {})
@@ -633,7 +675,7 @@ def draw_local_spectral_plots(frame, slit_data):
             py = cy - 5 - plot_h
 
         # Show frequency labels only on lower-right temporal display.
-        _draw_mini_spectrum(out, qt[label].get("xf", np.array([])), qt[label].get("yf", np.array([])), px, py, plot_w=plot_w, plot_h=plot_h, max_freq=5.0, unit_label="Hz", show_labels=(label == "BR"))
+        _draw_mini_spectrum(out, qt[label].get("xf", np.array([])), qt[label].get("yf", np.array([])), px, py, plot_w=plot_w, plot_h=plot_h, max_freq=6.0, unit_label="Hz", show_labels=(label == "BR"), band_amps=qt[label].get("bands"), band_centers=_TEMPORAL_BAND_CENTERS)
 
     return out
 
@@ -649,45 +691,47 @@ def make_display_frame(
     spectrum_overlay,
 ):
     if mode_name == "filtered":
-        # Show the exact grayscale signal used for threshold/contour/spectral/flow taps.
+        # Show pre-threshold filtered signal in filtered mode.
+        # Threshold display remains controlled by the R overlay toggle.
         out = cv2.cvtColor(analysis["preprocess_display"], cv2.COLOR_GRAY2BGR)
     else:
         out = base_frame.copy()
 
     if threshold_overlay:
         thr_rgb = cv2.cvtColor(analysis["threshold"], cv2.COLOR_GRAY2BGR)
-        edge_rgb = cv2.cvtColor(analysis["edges"], cv2.COLOR_GRAY2BGR)
-        merged = cv2.addWeighted(thr_rgb, 0.7, edge_rgb, 0.3, 0)
-        # Keep a faint view of the base signal, but make binary threshold dominant.
-        out = cv2.addWeighted(out, 0.2, merged, 0.8, 0)
+        # Threshold overlay now shows only analysis-fed threshold content.
+        out = cv2.addWeighted(out, 0.2, thr_rgb, 0.8, 0)
 
     if contour_overlay:
-        # X toggles visibility of blob-like contours (green)
-        # Z toggles visibility of straight-line contours (yellow)
+        # Blob-like contours in green and straight-line contours in yellow.
         # U adjusts straight-line minimum length threshold.
+        blob_contours = analysis["contours"]
+        if blob_contours:
+            cv2.drawContours(out, blob_contours, -1, (30, 250, 70), 2)
+            # Highlight the largest blob-like contour in red
+            largest_idx = int(np.argmax([cv2.contourArea(c) for c in blob_contours]))
+            cv2.drawContours(out, blob_contours, largest_idx, (0, 0, 255), 2)
 
-        # Show blob-like contours in green if X is enabled
-        if analyzer.enable_contour_motion_filter:
-            blob_contours = analysis["contours"]
-            if blob_contours:
-                cv2.drawContours(out, blob_contours, -1, (30, 250, 70), 2)
-                # Highlight the largest blob-like contour in red
-                largest_idx = int(np.argmax([cv2.contourArea(c) for c in blob_contours]))
-                cv2.drawContours(out, blob_contours, largest_idx, (0, 0, 255), 2)
-
-        # Show straight-line contours in yellow if Z is enabled
-        if analyzer.show_static_contours:
-            straight_line_contours = analysis.get("static_contours", [])
-            if straight_line_contours:
-                cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 2)
+        straight_line_contours = analysis.get("static_contours", [])
+        if straight_line_contours:
+            cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 2)
 
     if flow_overlay:
-        out = draw_flow_overlay(out, analyzer.last_flow)
-        out = draw_quadrant_flow_arrows(out, analyzer.last_flow)
+        # Fast flow: cyan-blue vectors + arrows
+        out = draw_flow_overlay(out, analyzer.last_flow, color=(30, 180, 255), disp_scale=2.0)
+        out = draw_quadrant_flow_arrows(out, analyzer.last_flow,
+                                        arrow_color=(80, 190, 255), global_color=(120, 220, 255),
+                                        circle_color=(200, 200, 200))
+        # Slow flow: normalize vector display to per-frame units (divide by interval)
+        slow_disp_scale = 2.0 / max(1, analyzer.flow_slow_interval)
+        out = draw_flow_overlay(out, analyzer.last_flow_slow, color=(30, 100, 255), disp_scale=slow_disp_scale)
+        out = draw_quadrant_flow_arrows(out, analyzer.last_flow_slow,
+                                        arrow_color=(30, 120, 255), global_color=(20, 80, 255),
+                                        circle_color=(160, 160, 160))
 
     if spectrum_overlay:
         slit = analysis["slit_data"]
-        out = draw_spectral_slits_overlay(out, slit, analysis["preprocess_display"])
+        out = draw_spectral_slits_overlay(out, slit, analysis.get("analysis_source", analysis["preprocess_display"]))
         out = draw_local_spectral_plots(out, slit)
 
     return out
@@ -882,6 +926,7 @@ def main():
     show_flow_overlay = True
     show_contour_overlay = False
     show_threshold_overlay = False
+    analyzer.enable_threshold_filter = show_threshold_overlay
     show_spectrum_overlay = True
     show_cpu_profile = True
     temporal_modes = [
@@ -891,7 +936,7 @@ def main():
         {"label": "chg 0.5s", "enabled": True, "seconds": 0.5, "output": "change"},
         {"label": "chg 2s", "enabled": True, "seconds": 2.0, "output": "change"},
     ]
-    temporal_mode_idx = 4
+    temporal_mode_idx = 3
 
     def apply_temporal_mode(mode_idx):
         mode = temporal_modes[mode_idx]
@@ -981,7 +1026,7 @@ def main():
     }
     next_status_panel_update_t = 0.0
     # Retained variable names for compatibility; values now represent minimum straight-line length (px).
-    contour_motion_threshold_presets = [20.0, 30.0, 45.0, 60.0]
+    contour_motion_threshold_presets = [0.0, 15.0, 60.0]
     contour_motion_threshold_idx = 0
     if contour_motion_threshold_presets:
         diffs = [abs(float(analyzer.contour_motion_threshold_px) - p) for p in contour_motion_threshold_presets]
@@ -1063,7 +1108,11 @@ def main():
             "gain_label": ["off", "-25%", "+50%", "auto"][max(0, min(3, analyzer.gain_mode))],
             "contour_motion_filter": analyzer.enable_contour_motion_filter,
             "static_contours": analyzer.show_static_contours,
-            "contour_motion_threshold_label": f"{float(analyzer.contour_motion_threshold_px):.1f}px",
+            "contour_motion_threshold_label": (
+                "off"
+                if float(analyzer.contour_motion_threshold_px) <= 0.0
+                else f"{float(analyzer.contour_motion_threshold_px):.1f}px"
+            ),
         }
 
         if cap_t1 >= next_status_panel_update_t or current_switches is None:
@@ -1096,6 +1145,7 @@ def main():
             current_switches,
             current_profile_stats,
             show_cpu_profile,
+            flow_data=analysis.get("flow_data") if analysis else None,
         )
 
         if analyzer.show_mask and analyzer.mask_points:
@@ -1180,16 +1230,17 @@ def main():
             show_flow_overlay = not show_flow_overlay
         if key == ord("c"):
             show_contour_overlay = not show_contour_overlay
-        if key == ord("x"):
-            analyzer.enable_contour_motion_filter = not analyzer.enable_contour_motion_filter
         if key == ord("u"):
             if contour_motion_threshold_presets:
                 contour_motion_threshold_idx = (contour_motion_threshold_idx + 1) % len(contour_motion_threshold_presets)
                 analyzer.contour_motion_threshold_px = contour_motion_threshold_presets[contour_motion_threshold_idx]
-        if key == ord("z"):
-            analyzer.show_static_contours = not analyzer.show_static_contours
         if key == ord("r"):
             show_threshold_overlay = not show_threshold_overlay
+            analyzer.enable_threshold_filter = show_threshold_overlay
+            analyzer.last_slit_data = None
+            analyzer.last_spectral_update_t = 0.0
+            for hist in analyzer.slit_history:
+                hist.clear()
         if key == ord("s"):
             show_spectrum_overlay = not show_spectrum_overlay
         if key == ord("y"):
