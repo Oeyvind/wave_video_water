@@ -1357,6 +1357,7 @@ class WaveAnalyzer:
             "coherence": float(flow_data.get("fast_coherence", 0.0)),
         }
 
+        fast_flow_updated = False
         if should_update and fast_ready:
             fast_flow = cv2.calcOpticalFlowFarneback(
                 self.prev_flow_gray,
@@ -1373,46 +1374,54 @@ class WaveAnalyzer:
             self.last_flow = fast_flow
             fast_m = self._flow_metrics(fast_flow, min_mag=0.25, speed_divisor=6.0, activity_divisor=8.0)
             self._adapt_flow_update_interval(fast_m, temporal_centroid_hz=temporal_centroid_hz)
+            fast_flow_updated = True
 
         self.prev_flow_gray = small_fast
 
         # --- Slow scale: compare frames flow_slow_interval apart at ~0.15x resolution ---
         # Captures large/slow movements that barely move between adjacent frames.
-        slow_scale = max(0.05, self.flow_downscale * 0.3)
-        slow_w = max(16, int(roi_gray.shape[1] * slow_scale))
-        slow_h = max(12, int(roi_gray.shape[0] * slow_scale))
-        small_slow = cv2.resize(roi_gray, (slow_w, slow_h), interpolation=cv2.INTER_AREA)
-
         is_slow_update = (self.flow_frame_index % max(1, int(self.flow_slow_interval))) == 0
-        if (
-            is_slow_update
-            and self.prev_flow_gray_slow is not None
-            and self.prev_flow_gray_slow.shape == small_slow.shape
-        ):
-            slow_flow = cv2.calcOpticalFlowFarneback(
-                self.prev_flow_gray_slow,
-                small_slow,
-                None,
-                self.flow_pyr_scale,
-                self.flow_levels,
-                min(self.flow_winsize + 6, 41),  # wider window for large displacements
-                self.flow_iterations,
-                self.flow_poly_n,
-                self.flow_poly_sigma,
-                self.flow_flags,
-            )
-            self.last_flow_slow = slow_flow
-            # Normalize to per-frame units by dividing divisors by flow_slow_interval.
-            n = float(self.flow_slow_interval)
-            self._last_slow_metrics = self._flow_metrics(
-                slow_flow,
-                min_mag=0.16 * n,
-                speed_divisor=6.0 * n,
-                activity_divisor=8.0 * n,
-            )
 
+        slow_flow_updated = False
         if is_slow_update or self.prev_flow_gray_slow is None:
+            slow_scale = max(0.05, self.flow_downscale * 0.3)
+            slow_w = max(16, int(roi_gray.shape[1] * slow_scale))
+            slow_h = max(12, int(roi_gray.shape[0] * slow_scale))
+            small_slow = cv2.resize(roi_gray, (slow_w, slow_h), interpolation=cv2.INTER_AREA)
+
+            if (
+                is_slow_update
+                and self.prev_flow_gray_slow is not None
+                and self.prev_flow_gray_slow.shape == small_slow.shape
+            ):
+                slow_flow = cv2.calcOpticalFlowFarneback(
+                    self.prev_flow_gray_slow,
+                    small_slow,
+                    None,
+                    self.flow_pyr_scale,
+                    self.flow_levels,
+                    min(self.flow_winsize + 6, 41),  # wider window for large displacements
+                    self.flow_iterations,
+                    self.flow_poly_n,
+                    self.flow_poly_sigma,
+                    self.flow_flags,
+                )
+                self.last_flow_slow = slow_flow
+                # Normalize to per-frame units by dividing divisors by flow_slow_interval.
+                n = float(self.flow_slow_interval)
+                self._last_slow_metrics = self._flow_metrics(
+                    slow_flow,
+                    min_mag=0.16 * n,
+                    speed_divisor=6.0 * n,
+                    activity_divisor=8.0 * n,
+                )
+                slow_flow_updated = True
+
             self.prev_flow_gray_slow = small_slow
+
+        # Skip metric updates entirely if no new flow was computed this frame.
+        if not fast_flow_updated and not slow_flow_updated:
+            return flow_data
 
         slow_m = self._last_slow_metrics
 
