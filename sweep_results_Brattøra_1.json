@@ -1,0 +1,3486 @@
+{
+  "baseline": {
+    "config": {
+      "name": "baseline",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 8,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "fast_update_1": {
+    "config": {
+      "name": "fast_update_1",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 8,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "fast_update_2": {
+    "config": {
+      "name": "fast_update_2",
+      "flow_update_interval": 2,
+      "flow_slow_interval": 8,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.95354882638125,
+      "flow_direction_std": 65.63786164197668,
+      "flow_coherence_mean": 0.47710228582231234,
+      "flow_coherence_std": 0.2659804321736229,
+      "flow_activity_mean": 0.6418934153473895,
+      "flow_activity_std": 0.2833758251204442,
+      "wave_direction_rate": 0.43478260869565216,
+      "mean_wave_direction": 219.8207692856303,
+      "flow_coherence_when_wave_direction": 0.4898329858661934
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 218.69304012936342,
+        "flow_coherence": 0.2797678665289187,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 218.69304012936342,
+        "flow_coherence": 0.2797678665289187,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3801666229132,
+        "flow_coherence": 0.7804004132680323,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3801666229132,
+        "flow_coherence": 0.7804004132680323,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 196.02999473891165,
+        "flow_coherence": 0.8080275196717794,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 196.02999473891165,
+        "flow_coherence": 0.8080275196717794,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 159.6579883566285,
+        "flow_coherence": 0.6990638013885967,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 159.6579883566285,
+        "flow_coherence": 0.6990638013885967,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 149.3472692859546,
+        "flow_coherence": 0.6412344966639184,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 149.3472692859546,
+        "flow_coherence": 0.6412344966639184,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 153.43292377375428,
+        "flow_coherence": 0.252207046802645,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 153.43292377375428,
+        "flow_coherence": 0.252207046802645,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 33.67351574690457,
+        "flow_coherence": 0.8861916788729521,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 33.67351574690457,
+        "flow_coherence": 0.8861916788729521,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "fast_update_4": {
+    "config": {
+      "name": "fast_update_4",
+      "flow_update_interval": 4,
+      "flow_slow_interval": 8,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 155.14871734579853,
+      "flow_direction_std": 68.96337007258343,
+      "flow_coherence_mean": 0.40131346445528093,
+      "flow_coherence_std": 0.25902019418350714,
+      "flow_activity_mean": 0.5429059318874193,
+      "flow_activity_std": 0.31568584219504847,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 221.94457436193701,
+      "flow_coherence_when_wave_direction": 0.5738834522579843
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.64775376538068,
+        "flow_coherence": 0.247244556683866,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.64775376538068,
+        "flow_coherence": 0.247244556683866,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.64775376538068,
+        "flow_coherence": 0.247244556683866,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.64775376538068,
+        "flow_coherence": 0.247244556683866,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3501696327018,
+        "flow_coherence": 0.7668510309284263,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3501696327018,
+        "flow_coherence": 0.7668510309284263,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3501696327018,
+        "flow_coherence": 0.7668510309284263,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3501696327018,
+        "flow_coherence": 0.7668510309284263,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 157.07053258060841,
+        "flow_coherence": 0.6811871070915169,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 157.07053258060841,
+        "flow_coherence": 0.6811871070915169,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 157.07053258060841,
+        "flow_coherence": 0.6811871070915169,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 157.07053258060841,
+        "flow_coherence": 0.6811871070915169,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.49768966847864,
+        "flow_coherence": 0.2313538523265146,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.49768966847864,
+        "flow_coherence": 0.2313538523265146,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.49768966847864,
+        "flow_coherence": 0.2313538523265146,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.49768966847864,
+        "flow_coherence": 0.2313538523265146,
+        "flow_activity": 0.6187482476234436
+      }
+    ]
+  },
+  "slow_interval_6": {
+    "config": {
+      "name": "slow_interval_6",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 6,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "slow_interval_12": {
+    "config": {
+      "name": "slow_interval_12",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 12,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "slow_interval_18": {
+    "config": {
+      "name": "slow_interval_18",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 18,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "slow_interval_24": {
+    "config": {
+      "name": "slow_interval_24",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 24,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "downscale_100": {
+    "config": {
+      "name": "downscale_100",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 8,
+      "downscale": 1.0,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "downscale_075": {
+    "config": {
+      "name": "downscale_075",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 8,
+      "downscale": 0.75,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "downscale_050": {
+    "config": {
+      "name": "downscale_050",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 8,
+      "downscale": 0.5,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "coarse_slow": {
+    "config": {
+      "name": "coarse_slow",
+      "flow_update_interval": 1,
+      "flow_slow_interval": 18,
+      "downscale": 0.75,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.15415002197668,
+      "flow_direction_std": 88.59310923740425,
+      "flow_coherence_mean": 0.4606733910604884,
+      "flow_coherence_std": 0.25297583663336626,
+      "flow_activity_mean": 0.6680346636668496,
+      "flow_activity_std": 0.30064353195680654,
+      "wave_direction_rate": 0.34782608695652173,
+      "mean_wave_direction": 219.61648673872514,
+      "flow_coherence_when_wave_direction": 0.5635917225306661
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 313.9216840222757,
+        "flow_coherence": 0.1391724895051422,
+        "flow_activity": 0.3627150058746338
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 138.91458619630555,
+        "flow_coherence": 0.30781324526428294,
+        "flow_activity": 0.37856200337409973
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 36.41837078469041,
+        "flow_coherence": 0.42847581544000896,
+        "flow_activity": 0.48183751106262207
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 340.35960045878375,
+        "flow_coherence": 0.3336007737360897,
+        "flow_activity": 0.3279098570346832
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 224.0257095517795,
+        "flow_coherence": 0.2597045029729762,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 241.63363800979818,
+        "flow_coherence": 0.7425950705996491,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 217.8385676373996,
+        "flow_coherence": 0.7730508131407371,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 220.56747882502953,
+        "flow_coherence": 0.6250052104040438,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 197.43879019776176,
+        "flow_coherence": 0.8008395079071559,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 186.4270647510694,
+        "flow_coherence": 0.7265695453585308,
+        "flow_activity": 0.8599613308906555
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 158.4900506746493,
+        "flow_coherence": 0.6892607097741809,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 150.6739728376217,
+        "flow_coherence": 0.6878745260048961,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 148.95078454823715,
+        "flow_coherence": 0.6380475754739908,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 147.31605829994612,
+        "flow_coherence": 0.31912236851968123,
+        "flow_activity": 0.5720372796058655
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 152.85300991059012,
+        "flow_coherence": 0.24689575304383718,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 18.100182493213367,
+        "flow_coherence": 0.7109607485361821,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 34.08386503517488,
+        "flow_coherence": 0.8839347401700843,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 42.281123422183725,
+        "flow_coherence": 0.14278113478001495,
+        "flow_activity": 1.0
+      }
+    ]
+  },
+  "fine_fast": {
+    "config": {
+      "name": "fine_fast",
+      "flow_update_interval": 2,
+      "flow_slow_interval": 12,
+      "downscale": 1.0,
+      "enable_lbp": true,
+      "enable_gabor": true
+    },
+    "stats": {
+      "pyr_centroid_mean": 0.5,
+      "pyr_centroid_std": 0.0,
+      "pyr_centroid_deriv_mean": 0.0,
+      "pyr_centroid_deriv_std": 0.0,
+      "pyr_centroid_deriv_max": 0.0,
+      "lbp_roughness_mean": 0.0,
+      "lbp_roughness_std": 0.0,
+      "lbp_roughness_deriv_mean": 0.0,
+      "lbp_roughness_deriv_std": 0.0,
+      "lbp_roughness_deriv_max": 0.0,
+      "gabor_wavelength_mean": 15.478260869565217,
+      "gabor_wavelength_std": 2.4471734399078757,
+      "gabor_wavelength_deriv_mean": 0.5454545454545454,
+      "gabor_wavelength_deriv_std": 2.4995867427031855,
+      "gabor_wavelength_deriv_max": 12.0,
+      "flow_direction_mean": 161.95354882638125,
+      "flow_direction_std": 65.63786164197668,
+      "flow_coherence_mean": 0.47710228582231234,
+      "flow_coherence_std": 0.2659804321736229,
+      "flow_activity_mean": 0.6418934153473895,
+      "flow_activity_std": 0.2833758251204442,
+      "wave_direction_rate": 0.43478260869565216,
+      "mean_wave_direction": 219.8207692856303,
+      "flow_coherence_when_wave_direction": 0.4898329858661934
+    },
+    "metrics": [
+      {
+        "frame_idx": 0,
+        "timestamp": 0.0,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 4.0,
+        "flow_direction_deg": 0.0,
+        "flow_coherence": 0.0,
+        "flow_activity": 0.0
+      },
+      {
+        "frame_idx": 75,
+        "timestamp": 2.499213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 150,
+        "timestamp": 4.998426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 240.461665845791,
+        "flow_coherence": 0.20005325627469425,
+        "flow_activity": 0.559224009513855
+      },
+      {
+        "frame_idx": 225,
+        "timestamp": 7.497639964264443,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 300,
+        "timestamp": 9.996853285685924,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 228.53897909117222,
+        "flow_coherence": 0.3809158735875424,
+        "flow_activity": 0.4033074378967285
+      },
+      {
+        "frame_idx": 375,
+        "timestamp": 12.496066607107405,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 450,
+        "timestamp": 14.995279928528886,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 121.34444476617784,
+        "flow_coherence": 0.2569812050781152,
+        "flow_activity": 0.3669874668121338
+      },
+      {
+        "frame_idx": 525,
+        "timestamp": 17.494493249950366,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 600,
+        "timestamp": 19.99370657137185,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 145.90582314581314,
+        "flow_coherence": 0.3018331288193961,
+        "flow_activity": 0.30723631381988525
+      },
+      {
+        "frame_idx": 675,
+        "timestamp": 22.492919892793328,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 218.69304012936342,
+        "flow_coherence": 0.2797678665289187,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 750,
+        "timestamp": 24.99213321421481,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 218.69304012936342,
+        "flow_coherence": 0.2797678665289187,
+        "flow_activity": 0.49816039204597473
+      },
+      {
+        "frame_idx": 825,
+        "timestamp": 27.491346535636293,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3801666229132,
+        "flow_coherence": 0.7804004132680323,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 900,
+        "timestamp": 29.99055985705777,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 215.3801666229132,
+        "flow_coherence": 0.7804004132680323,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 975,
+        "timestamp": 32.489773178479254,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 196.02999473891165,
+        "flow_coherence": 0.8080275196717794,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1050,
+        "timestamp": 34.98898649990073,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 196.02999473891165,
+        "flow_coherence": 0.8080275196717794,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1125,
+        "timestamp": 37.48819982132222,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 159.6579883566285,
+        "flow_coherence": 0.6990638013885967,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1200,
+        "timestamp": 39.9874131427437,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 159.6579883566285,
+        "flow_coherence": 0.6990638013885967,
+        "flow_activity": 0.7924171090126038
+      },
+      {
+        "frame_idx": 1275,
+        "timestamp": 42.48662646416518,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 149.3472692859546,
+        "flow_coherence": 0.6412344966639184,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1350,
+        "timestamp": 44.985839785586656,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 149.3472692859546,
+        "flow_coherence": 0.6412344966639184,
+        "flow_activity": 0.8356932997703552
+      },
+      {
+        "frame_idx": 1425,
+        "timestamp": 47.48505310700814,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 153.43292377375428,
+        "flow_coherence": 0.252207046802645,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1500,
+        "timestamp": 49.98426642842962,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 153.43292377375428,
+        "flow_coherence": 0.252207046802645,
+        "flow_activity": 0.6187482476234436
+      },
+      {
+        "frame_idx": 1575,
+        "timestamp": 52.4834797498511,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 33.67351574690457,
+        "flow_coherence": 0.8861916788729521,
+        "flow_activity": 1.0
+      },
+      {
+        "frame_idx": 1650,
+        "timestamp": 54.982693071272585,
+        "pyramid_centroid": 0.5,
+        "lbp_roughness": 0.0,
+        "gabor_wavelength_px": 16.0,
+        "flow_direction_deg": 33.67351574690457,
+        "flow_coherence": 0.8861916788729521,
+        "flow_activity": 1.0
+      }
+    ]
+  }
+}

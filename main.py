@@ -65,9 +65,10 @@ def draw_transparent_rect(frame, x, y, width, height, alpha=0.45):
     y2 = min(frame.shape[0], y + height)
     if x2 <= x or y2 <= y:
         return
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (x, y), (x2, y2), (0, 0, 0), -1)
-    cv2.addWeighted(overlay, alpha, frame, 1.0 - alpha, 0, frame)
+    roi = frame[y:y2, x:x2]
+    overlay = roi.copy()
+    cv2.rectangle(overlay, (0, 0), (x2 - x - 1, y2 - y - 1), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, alpha, roi, 1.0 - alpha, 0, roi)
 
 
 def draw_text_block(
@@ -217,6 +218,10 @@ def draw_status_hud(
     profile_stats,
     show_cpu_profile,
     flow_data=None,
+    pyramid_data=None,
+    wavelength_data=None,
+    lbp_data=None,
+    gabor_data=None,
 ):
     hud = frame.copy()
     color = (235, 235, 235)
@@ -224,24 +229,31 @@ def draw_status_hud(
 
     smooth = signal_smoothed
     signal_lines = [
-        f"freq {smooth['wave_frequency_hz']:.2f} Hz ctr {smooth['freq_centroid_hz']:.2f} Hz",
         f"bump {smooth['bump_size_common'] * 1000.0:.2f}% spread {smooth['bump_size_spread'] * 1000.0:.2f}% max {smooth['bump_size_max'] * 1000.0:.2f}%",
         f"bump ctr(size) {smooth['bump_size_centroid'] * 100.0:.2f}% shape {smooth['bump_shape_roundness']:.2f}",
-        f"dir {smooth['movement_direction_deg']:.1f} deg spd {smooth['movement_speed_norm']:.2f}",
         f"act {smooth['activity']:.2f} conf {smooth['confidence']:.2f}",
     ]
     fd = flow_data or {}
+    lbp = lbp_data or {}
+    gabor = gabor_data or {}
     signal_lines += [
         f"flow fast: act {fd.get('fast_activity', 0.0):.2f}  spd {fd.get('fast_speed_norm', 0.0):.2f}  dir {fd.get('fast_direction_deg', 0.0):.0f}  coh {fd.get('fast_coherence', 0.0):.2f}",
         f"flow slow: act {fd.get('slow_activity', 0.0):.2f}  spd {fd.get('slow_speed_norm', 0.0):.2f}  dir {fd.get('slow_direction_deg', 0.0):.0f}  coh {fd.get('slow_coherence', 0.0):.2f}",
+        f"flow dir tgt {fd.get('directional_target_deg', 225.0):.0f}deg ({fd.get('directional_source', 'fast')})  support {fd.get('directional_global', {}).get('support', 0.0):.2f}  hit {fd.get('directional_global', {}).get('hit_ratio', 0.0):.2f}",
+        f"flow best: quad {fd.get('directional_best_quadrant', '-')} {fd.get('directional_best_quadrant_support', 0.0):.2f}  stripe {fd.get('directional_best_stripe', '-')} {fd.get('directional_best_stripe_support', 0.0):.2f}",
+        f"lbp: rough {lbp.get('lbp_roughness', 0.0):.2f}  uniform {lbp.get('lbp_uniform_ratio', 0.0):.2f}  entr {lbp.get('lbp_entropy', 0.0):.2f}",
+        f"gabor: ori {gabor.get('dominant_orientation_deg', 0.0):.0f}deg  wl {gabor.get('dominant_wavelength_px', 0.0):.0f}px  aniso {gabor.get('gabor_anisotropy', 0.0):.2f}",
     ]
+
+    _, signal_h = measure_text_block(signal_lines, font_scale=0.52, thickness=1, pad=8, line_gap=6)
+    signal_y = max(10, (hud.shape[0] - signal_h) // 2)
 
     draw_text_block(
         hud,
         signal_lines,
         10,
-        hud.shape[0] - 10,
-        anchor="bottom_left",
+        signal_y,
+        anchor="top_left",
         font_scale=0.52,
         thickness=1,
         color=color,
@@ -253,7 +265,8 @@ def draw_status_hud(
         f"processing fps: {perf_stats['processing_fps']:.2f}",
         f"playback ratio: {perf_stats['playback_ratio_pct']:.1f}%",
         f"quality: {quality_idx + 1}",
-        f"flow: every {switches['flow_interval']} frame(s)",
+        f"flow fast: every {switches['flow_interval']} frame(s) ({'auto' if switches['flow_update_auto'] else 'manual'})",
+        f"flow slow: every {switches['flow_slow_interval']} frame(s)",
     ]
     perf_w, perf_h = measure_text_block(perf_lines, font_scale=0.48, thickness=1, pad=8, line_gap=6)
 
@@ -266,7 +279,9 @@ def draw_status_hud(
         f"screen   {profile_stats.get('screen_blend_ms', 0.0):.2f} | {profile_stats.get('screen_blend_pct', 0.0):.1f}%",
         f"blur     {profile_stats.get('pre_blur_ms', 0.0):.2f} | {profile_stats.get('pre_blur_pct', 0.0):.1f}%",
         f"contours {profile_stats.get('contours_ms', 0.0):.2f} | {profile_stats.get('contours_pct', 0.0):.1f}%",
-        f"slits    {profile_stats.get('slits_ms', 0.0):.2f} | {profile_stats.get('slits_pct', 0.0):.1f}%",
+        f"pyramid  {profile_stats.get('pyramid_ms', 0.0):.2f} | {profile_stats.get('pyramid_pct', 0.0):.1f}%",
+        f"lbp     {profile_stats.get('lbp_ms', 0.0):.2f} | {profile_stats.get('lbp_pct', 0.0):.1f}%",
+        f"gabor   {profile_stats.get('gabor_ms', 0.0):.2f} | {profile_stats.get('gabor_pct', 0.0):.1f}%",
         f"flow     {profile_stats.get('flow_ms', 0.0):.2f} | {profile_stats.get('flow_pct', 0.0):.1f}%",
         f"fusion   {profile_stats.get('fusion_ms', 0.0):.2f} | {profile_stats.get('fusion_pct', 0.0):.1f}%",
         f"render   {profile_stats.get('render_ms', 0.0):.2f} | {profile_stats.get('render_pct', 0.0):.1f}%",
@@ -290,10 +305,13 @@ def draw_status_hud(
         f"[R] threshold: {'on' if switches['threshold_overlay'] else 'off'}",
         f"[C] contour overlay: {'on' if switches['contour_overlay'] else 'off'}",
         f"[U] line min len: {switches['contour_motion_threshold_label']}",
-        f"[S] spectrum overlay: {'on' if switches['spectrum_overlay'] else 'off'}",
+        f"[S] pyramid overlay: {'on' if switches['spectrum_overlay'] else 'off'}",
         f"[Y] cpu profile: {'on' if show_cpu_profile else 'off'}",
         f"[V] flow overlay: {'on' if switches['flow_overlay'] else 'off'}",
+        f"[J] LBP analysis: {'on' if switches['lbp_analysis'] else 'off'}",
+        f"[O] Gabor analysis: {'on' if switches['gabor_analysis'] else 'off'}",
         f"[F] flow detail: {switches['flow_detail_mode']}",
+        f"[I] fast interval auto: {'on' if switches['flow_update_auto'] else 'off'}",
         f"[M] show mask: {'on' if switches['show_mask'] else 'off'}",
         f"[K] mask edit: {'on' if switches['editing_mask'] else 'off'}",
         f"[N] step mode: {'on' if switches['step_mode'] else 'off'}",
@@ -384,7 +402,47 @@ def _quadrant_vector_stats(flow_block):
     return direction_deg, strength, True
 
 
-def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_color=(120, 220, 255), circle_color=(220, 220, 220)):
+def _flow_arrow_centers(frame_h, frame_w):
+    q_radius = 34
+    diameter = q_radius * 2
+    offset = int(round(diameter * 0.6))
+
+    centers = {}
+    for label, base_center in (
+        ("UL", (int(frame_w * 0.25), int(frame_h * 0.25))),
+        ("UR", (int(frame_w * 0.75), int(frame_h * 0.25))),
+        ("LL", (int(frame_w * 0.25), int(frame_h * 0.75))),
+        ("LR", (int(frame_w * 0.75), int(frame_h * 0.75))),
+    ):
+        corner_dx = -offset if base_center[0] < (frame_w * 0.5) else offset
+        corner_dy = -offset if base_center[1] < (frame_h * 0.5) else offset
+        c_x = int(np.clip(base_center[0] + corner_dx, q_radius + 2, frame_w - q_radius - 2))
+        c_y = int(np.clip(base_center[1] + corner_dy, q_radius + 2, frame_h - q_radius - 2))
+        centers[label] = (c_x, c_y)
+
+    centers["G"] = (int(frame_w * 0.5), int(frame_h * 0.5))
+    return centers
+
+
+def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10, color=(80, 170, 255), value_max=300.0):
+    x0 = int(x0)
+    y0 = int(y0)
+    slider_h = int(max(24, slider_h))
+    slider_w = int(max(6, slider_w))
+    value = 0.0 if value is None else float(max(0.0, value))
+    norm = float(np.clip(value / max(value_max, 1e-6), 0.0, 1.0))
+
+    draw_transparent_rect(frame, x0 - 4, y0 - 16, slider_w + 8, slider_h + 22, alpha=0.52)
+    base_y = y0 + slider_h
+    fill_h = int(max(1, round(norm * slider_h))) if value > 0.0 else 0
+    cv2.rectangle(frame, (x0, y0), (x0 + slider_w, base_y), (140, 140, 140), 1)
+    if fill_h > 0:
+        cv2.rectangle(frame, (x0, base_y - fill_h), (x0 + slider_w, base_y), color, -1)
+    cv2.putText(frame, label, (x0 - 2, y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (225, 225, 225), 1, cv2.LINE_AA)
+
+
+def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_color=(120, 220, 255),
+                              circle_color=(220, 220, 220), global_rate_hz=None, rate_side=None):
     if flow is None:
         return frame
 
@@ -393,6 +451,7 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
     fh, fw = flow.shape[:2]
     half_h = fh // 2
     half_w = fw // 2
+    centers = _flow_arrow_centers(h, w)
 
     quadrants = [
         ("UL", flow[0:half_h, 0:half_w], (int(w * 0.25), int(h * 0.25))),
@@ -404,279 +463,228 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
     for label, block, center in quadrants:
         direction_deg, strength, has_motion = _quadrant_vector_stats(block)
         radius = 34
-        diameter = radius * 2
-        offset = int(round(diameter * 0.6))
-        corner_dx = -offset if center[0] < (w * 0.5) else offset
-        corner_dy = -offset if center[1] < (h * 0.5) else offset
-        c_x = int(np.clip(center[0] + corner_dx, radius + 2, w - radius - 2))
-        c_y = int(np.clip(center[1] + corner_dy, radius + 2, h - radius - 2))
-        shifted_center = (c_x, c_y)
+        shifted_center = centers[label]
 
         cv2.circle(out, shifted_center, radius, circle_color, 1)
 
         if has_motion:
+            q_color = arrow_color
             arrow_len = int(np.clip(16 + strength * 8.0, 16, 44))
             dx = int(np.cos(np.radians(direction_deg)) * arrow_len)
             dy = int(np.sin(np.radians(direction_deg)) * arrow_len)
-            cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), arrow_color, 2, tipLength=0.22)
+            cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), q_color, 2, tipLength=0.22)
 
         cv2.putText(out, label, (shifted_center[0] - 12, shifted_center[1] - radius - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (235, 235, 235), 1, cv2.LINE_AA)
 
     # Global summary arrow
     g_direction_deg, g_strength, g_has_motion = _quadrant_vector_stats(flow)
-    g_center = (int(w * 0.5), int(h * 0.5))
+    g_center = centers["G"]
     g_radius = 42
     cv2.circle(out, g_center, g_radius, circle_color, 1)
     if g_has_motion:
+        g_color = global_color
         g_len = int(np.clip(20 + g_strength * 10.0, 20, 56))
         g_dx = int(np.cos(np.radians(g_direction_deg)) * g_len)
         g_dy = int(np.sin(np.radians(g_direction_deg)) * g_len)
-        cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), global_color, 3, tipLength=0.22)
+        cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), g_color, 3, tipLength=0.22)
+
+    if global_rate_hz is not None and rate_side in ("left", "right"):
+        rate_text = f"{float(global_rate_hz):.1f}Hz"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.45
+        thickness = 1
+        (tw, th), _ = cv2.getTextSize(rate_text, font, font_scale, thickness)
+        # Anchor near the upper-left / upper-right arc (about 45 degrees),
+        # then offset by 4 px outward so text visually hugs the circle.
+        arc_dx = int(round(g_radius * 0.72))
+        arc_dy = int(round(g_radius * 0.72))
+        y = g_center[1] - arc_dy + (th // 2)
+        if rate_side == "left":
+            # Right-align left label to a point 4 px left of the UL arc.
+            x = (g_center[0] - arc_dx - 4) - tw
+        else:
+            # Left-align right label to a point 4 px right of the UR arc.
+            x = g_center[0] + arc_dx + 4
+        cv2.putText(out, rate_text, (x, y), font, font_scale, global_color, thickness, cv2.LINE_AA)
+
     cv2.putText(out, "G", (g_center[0] - 7, g_center[1] - g_radius - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (245, 245, 245), 1, cv2.LINE_AA)
 
     return out
 
 
-def draw_spectral_slits_overlay(frame, slit_data, roi_gray=None):
-    slit_rows = slit_data.get("slit_rows", []) if isinstance(slit_data, dict) else list(slit_data)
-    slit_cols = slit_data.get("slit_cols", []) if isinstance(slit_data, dict) else []
-    horizontal_spectra = slit_data.get("horizontal_spectra", []) if isinstance(slit_data, dict) else []
-    vertical_spectra = slit_data.get("vertical_spectra", []) if isinstance(slit_data, dict) else []
-    if not slit_rows and not slit_cols:
-        return frame
+# Pyramid texture band colors: fine, mid-fine, mid-coarse, coarse, extra-coarse.
+# Ordered as orange -> yellow -> green -> blue -> purple.
+_PYRAMID_BAND_COLORS = [
+    (0, 140, 255),
+    (0, 220, 255),
+    (60, 200, 120),
+    (255, 140, 80),
+    (220, 60, 220),
+]
 
-    out = frame.copy()
-    h, w = out.shape[:2]
-    WAVE_H = 20   # waveform height/width in pixels
-    CIRC_R = 15   # quadrant center circle radius
-    gray_ok = (
-        roi_gray is not None
-        and roi_gray.ndim == 2
-        and roi_gray.shape == (h, w)
+
+def _centroid_to_color(centroid, brightness=1.0):
+    """Interpolate through the 5 pyramid band colors using a centroid in [0, 1].
+
+    centroid=0 → fine (cyan), centroid=1 → extra-coarse (purple).
+    brightness scales the result, e.g. 0.65 for dimmed slow-flow arrows.
+    """
+    colors = _PYRAMID_BAND_COLORS
+    n = len(colors) - 1          # 4 segments
+    t = float(np.clip(centroid, 0.0, 1.0)) * n
+    lo = int(t)
+    hi = min(lo + 1, n)
+    frac = t - lo
+    c0, c1 = colors[lo], colors[hi]
+    b = float(np.clip(brightness, 0.0, 1.0))
+    return (
+        int((c0[0] + frac * (c1[0] - c0[0])) * b),
+        int((c0[1] + frac * (c1[1] - c0[1])) * b),
+        int((c0[2] + frac * (c1[2] - c0[2])) * b),
     )
 
-    horizontal_samples = {int(item.get("row", -1)): item.get("samples") for item in horizontal_spectra if isinstance(item, dict)}
-    vertical_samples = {int(item.get("col", -1)): item.get("samples") for item in vertical_spectra if isinstance(item, dict)}
 
-    # Horizontal slits: amber line + green waveform drawn above the line
-    for row in slit_rows:
-        y = int(np.clip(row, 0, h - 1))
-        cv2.line(out, (0, y), (w - 1, y), (255, 210, 60), 1)
-        samples = horizontal_samples.get(y)
-        if samples is not None and len(samples) == w:
-            pixels = samples.astype(np.float32)
-        elif gray_ok:
-            pixels = roi_gray[y, :].astype(np.float32)
-        else:
-            pixels = None
-        if pixels is not None:
-            pmin, pmax = float(pixels.min()), float(pixels.max())
-            norm = (pixels - pmin) / (pmax - pmin + 1e-6)
-            xs = np.arange(w, dtype=np.int32)
-            ys = np.clip((y - 1 - norm * WAVE_H).astype(np.int32), 0, h - 1)
-            pts = np.column_stack([xs, ys])
-            cv2.polylines(out, [pts], False, (60, 210, 120), 1)
+def _rate_hz_to_color(rate_hz, min_hz=0.5, max_hz=30.0):
+    """Map analysis update rate (Hz) to palette color using a log scale.
 
-    # Vertical slits: amber line + green waveform drawn to the left of the line
-    for col in slit_cols:
-        x = int(np.clip(col, 0, w - 1))
-        cv2.line(out, (x, 0), (x, h - 1), (255, 210, 60), 1)
-        samples = vertical_samples.get(x)
-        if samples is not None and len(samples) == h:
-            pixels = samples.astype(np.float32)
-        elif gray_ok:
-            pixels = roi_gray[:, x].astype(np.float32)
-        else:
-            pixels = None
-        if pixels is not None:
-            pmin, pmax = float(pixels.min()), float(pixels.max())
-            norm = (pixels - pmin) / (pmax - pmin + 1e-6)
-            ys = np.arange(h, dtype=np.int32)
-            xs = np.clip((x - 1 - norm * WAVE_H).astype(np.int32), 0, w - 1)
-            pts = np.column_stack([xs, ys])
-            cv2.polylines(out, [pts], False, (60, 210, 120), 1)
-
-    # Quadrant center circles: filled with pixel brightness, outlined in white
-    if slit_rows and slit_cols:
-        for ry in slit_rows:
-            for cx in slit_cols:
-                ry_c = int(np.clip(ry, 0, h - 1))
-                cx_c = int(np.clip(cx, 0, w - 1))
-                b = int(roi_gray[ry_c, cx_c]) if gray_ok else 128
-                cv2.circle(out, (cx_c, ry_c), CIRC_R, (b, b, b), -1)
-                cv2.circle(out, (cx_c, ry_c), CIRC_R, (220, 220, 220), 1)
-
-    return out
+    Low rate (slow analysis) maps to low palette index; high rate (fast analysis)
+    maps to high palette index.
+    """
+    lo = max(1e-6, float(min_hz))
+    hi = max(lo + 1e-6, float(max_hz))
+    rate = float(np.clip(rate_hz, lo, hi))
+    norm = (np.log(rate) - np.log(lo)) / (np.log(hi) - np.log(lo))
+    return _centroid_to_color(norm)
 
 
-# Band center frequencies and display colors for vertical sliders.
-_SPATIAL_BAND_CENTERS = [4.0, 10.0, 20.0]   # c/f
-_TEMPORAL_BAND_CENTERS = [1.0, 2.5, 6.0]    # Hz
-_BAND_COLORS = [(40, 40, 220), (40, 200, 40), (220, 40, 40)]  # BGR: red, green, blue
+def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=4, temporal_bands=None, centroid=None):
+    bands = list(bands) if bands is not None else [0.0] * len(_PYRAMID_BAND_COLORS)
+    if len(bands) < len(_PYRAMID_BAND_COLORS):
+        bands = bands + [0.0] * (len(_PYRAMID_BAND_COLORS) - len(bands))
+    bar_count = len(_PYRAMID_BAND_COLORS)
+    group_w = (bar_w * bar_count) + (gap * max(0, bar_count - 1))
+    temporal_present = temporal_bands is not None
+    centroid_present = centroid is not None
+    temporal_h = bar_h          # same height as spatial bars
+    centroid_h = 12
+    t_centroid_rows = centroid_h + 12 if temporal_present else 0
+    group_h = bar_h + 18 + (centroid_h + 12 if centroid_present else 0) + (temporal_h + 16 if temporal_present else 0) + t_centroid_rows
+
+    draw_transparent_rect(frame, x0 - 4, y0 - 14, group_w + 8, group_h + 8, alpha=0.52)
+    cv2.putText(frame, label, (x0, y0 - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (225, 225, 225), 1, cv2.LINE_AA)
+
+    base_y = y0 + bar_h
+    for idx in range(bar_count):
+        val = float(np.clip(bands[idx], 0.0, 1.0))
+        hpx = int(max(1, round(val * bar_h)))
+        bx0 = x0 + idx * (bar_w + gap)
+        bx1 = bx0 + bar_w
+        by0 = base_y - hpx
+        cv2.rectangle(frame, (bx0, by0), (bx1, base_y), _PYRAMID_BAND_COLORS[idx], -1)
+        cv2.rectangle(frame, (bx0, y0), (bx1, base_y), (140, 140, 140), 1)
+
+    temporal_offset = 0
+    if centroid_present:
+        cval = float(np.clip(centroid, 0.0, 1.0))
+        c_y0 = base_y + 6
+        c_h = centroid_h
+        c_mid = c_y0 + (c_h // 2)
+        rail_x0 = x0
+        rail_x1 = x0 + group_w
+        cv2.line(frame, (rail_x0, c_mid), (rail_x1, c_mid), (170, 170, 170), 1, cv2.LINE_AA)
+        for t in range(bar_count):
+            tx = x0 + int(round((group_w - 1) * (t / max(1, bar_count - 1))))
+            cv2.line(frame, (tx, c_mid - 2), (tx, c_mid + 2), (110, 110, 110), 1, cv2.LINE_AA)
+        marker_x = x0 + int(round(cval * (group_w - 1)))
+        cv2.rectangle(frame, (marker_x - 2, c_y0), (marker_x + 2, c_y0 + c_h), (240, 240, 240), -1)
+        temporal_offset = c_h + 12
+
+    if temporal_present:
+        tvals = list(temporal_bands)
+        if len(tvals) < bar_count:
+            tvals = tvals + [0.0] * (bar_count - len(tvals))
+        t_y0 = base_y + 12 + temporal_offset
+        t_base_y = t_y0 + temporal_h
+        cv2.putText(frame, "T", (x0 - 12, t_base_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (205, 205, 205), 1, cv2.LINE_AA)
+        for idx in range(bar_count):
+            val = float(np.clip(tvals[idx], 0.0, 1.0))
+            hpx = int(max(1, round(val * temporal_h)))
+            bx0 = x0 + idx * (bar_w + gap)
+            bx1 = bx0 + bar_w
+            by0 = t_base_y - hpx
+            c = _PYRAMID_BAND_COLORS[idx]
+            dim_c = (int(c[0] * 0.65), int(c[1] * 0.65), int(c[2] * 0.65))
+            cv2.rectangle(frame, (bx0, by0), (bx1, t_base_y), dim_c, -1)
+            cv2.rectangle(frame, (bx0, t_y0), (bx1, t_base_y), (120, 120, 120), 1)
+
+        # Temporal centroid rail — weighted mean of temporal band indices
+        t_arr = np.asarray(tvals[:bar_count], dtype=np.float32)
+        t_total = float(np.sum(t_arr)) + 1e-9
+        t_centroid = float(np.dot(np.arange(bar_count, dtype=np.float32), t_arr) / (t_total * (bar_count - 1)))
+        tc_y0 = t_base_y + 6
+        tc_h = centroid_h
+        tc_mid = tc_y0 + (tc_h // 2)
+        cv2.line(frame, (x0, tc_mid), (x0 + group_w, tc_mid), (130, 130, 130), 1, cv2.LINE_AA)
+        for t in range(bar_count):
+            tx = x0 + int(round((group_w - 1) * (t / max(1, bar_count - 1))))
+            cv2.line(frame, (tx, tc_mid - 2), (tx, tc_mid + 2), (90, 90, 90), 1, cv2.LINE_AA)
+        tc_marker_x = x0 + int(round(float(np.clip(t_centroid, 0.0, 1.0)) * (group_w - 1)))
+        cv2.rectangle(frame, (tc_marker_x - 2, tc_y0), (tc_marker_x + 2, tc_y0 + tc_h), (180, 180, 180), -1)
 
 
-def _draw_mini_spectrum(frame, xf, yf, x0, y0, plot_w=84, plot_h=54, max_freq=5.0, unit_label="", show_labels=True, band_amps=None, band_centers=None):
-    h, w = frame.shape[:2]
-    x0 = int(np.clip(x0, 0, max(0, w - plot_w)))
-    y0 = int(np.clip(y0, 0, max(0, h - plot_h)))
-    x1 = x0 + plot_w
-    y1 = y0 + plot_h
-    label_scale = 0.5
-    (_, label_h), label_bl = cv2.getTextSize("0.0", cv2.FONT_HERSHEY_SIMPLEX, label_scale, 1)
-    label_strip_h = (label_h + label_bl + 4) if show_labels else 0
-    bg_y0 = max(0, y0 - label_strip_h)
+def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
+    if not isinstance(pyramid_data, dict):
+        return frame
 
-    draw_transparent_rect(frame, x0, bg_y0, plot_w, plot_h + label_strip_h, alpha=0.6)
-
-    if xf is None or yf is None or len(xf) == 0 or len(yf) == 0:
-        return
-
-    left = x0 + 3
-    right = x1 - 4
-    top = y0 + 3
-    bottom = y1 - 4
-    if right <= left or bottom <= top:
-        return
-
-    mask = (xf >= 0.0) & (xf <= max_freq)
-    if not np.any(mask):
-        return
-    xf_plot = xf[mask]
-    yf_plot = yf[mask].astype(np.float32)
-    max_amp = float(np.max(yf_plot))
-    if max_amp <= 1e-9:
-        return
-
-    points = []
-    for fx, amp in zip(xf_plot, yf_plot):
-        px = left + int((float(fx) / max_freq) * (right - left))
-        py = bottom - int((float(amp) / max_amp) * (bottom - top))
-        points.append((int(np.clip(px, left, right)), int(np.clip(py, top, bottom))))
-    if len(points) >= 2:
-        cv2.polylines(frame, [np.array(points, dtype=np.int32)], False, (210, 240, 120), 1)
-
-    # Draw bandpass amplitude sliders overlaid on the FFT plot.
-    if band_amps is not None and band_centers is not None and max_amp > 1e-9:
-        # Calibrate time-domain filter RMS outputs to FFT amplitude scale by
-        # matching each band to local FFT magnitude near its center frequency.
-        center_ratios = []
-        for center_f, amp_raw in zip(band_centers, band_amps):
-            if center_f <= 0.0 or center_f > max_freq:
-                continue
-            if amp_raw is None or amp_raw <= 1e-12:
-                continue
-            idx = int(np.argmin(np.abs(xf_plot - float(center_f))))
-            local_fft_amp = float(yf_plot[idx]) if 0 <= idx < len(yf_plot) else 0.0
-            if local_fft_amp > 1e-12:
-                center_ratios.append(local_fft_amp / float(amp_raw))
-
-        amp_scale = float(np.median(center_ratios)) if center_ratios else 1.0
-        amp_scale = float(np.clip(amp_scale, 1.0, 1e6))
-
-        slider_w = 5
-        for center_f, amp_raw, color in zip(band_centers, band_amps, _BAND_COLORS):
-            if center_f <= 0.0 or center_f > max_freq:
-                continue
-            amp_norm = (float(amp_raw) * amp_scale) / max_amp
-            sx = left + int((center_f / max_freq) * (right - left))
-            if color == _BAND_COLORS[2]:
-                sx -= slider_w // 2
-            sx = int(np.clip(sx, left, right))
-            bar_h = int(amp_norm * (bottom - top))
-            bar_h = max(2, min(bar_h, bottom - top))
-            rx0 = max(left, sx - slider_w // 2)
-            rx1 = min(right, sx + slider_w // 2 + 1)
-            cv2.rectangle(frame, (rx0, bottom - bar_h), (rx1, bottom), color, -1)
-
-    if show_labels:
-        # Frequency range labels: start / middle / end of displayed band.
-        f0 = 0.0
-        f1 = max_freq * 0.5
-        f2 = max_freq
-        l0 = f"{f0:.1f}"
-        l1 = f"{f1:.1f}"
-        l2 = f"{f2:.1f}"
-
-        label_y = bg_y0 + label_h + 1
-        cv2.putText(frame, l0, (x0 + 2, label_y), cv2.FONT_HERSHEY_SIMPLEX, label_scale, (200, 200, 200), 1, cv2.LINE_AA)
-        (l1_w, _), _ = cv2.getTextSize(l1, cv2.FONT_HERSHEY_SIMPLEX, label_scale, 1)
-        cv2.putText(frame, l1, (x0 + (plot_w - l1_w) // 2, label_y), cv2.FONT_HERSHEY_SIMPLEX, label_scale, (200, 200, 200), 1, cv2.LINE_AA)
-        (l2_w, _), _ = cv2.getTextSize(l2, cv2.FONT_HERSHEY_SIMPLEX, label_scale, 1)
-        cv2.putText(frame, l2, (x1 - l2_w - 2, label_y), cv2.FONT_HERSHEY_SIMPLEX, label_scale, (200, 200, 200), 1, cv2.LINE_AA)
-
-    if unit_label:
-        (u_w, u_h), _ = cv2.getTextSize(unit_label, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
-        unit_x = x0 + (plot_w - u_w) // 2
-        unit_y = y0 + max(12, u_h + 4)
-        cv2.putText(frame, unit_label, (unit_x, unit_y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (170, 170, 170), 1, cv2.LINE_AA)
-
-
-def draw_local_spectral_plots(frame, slit_data):
-    out = frame.copy()
+    out = frame
     h, w = out.shape[:2]
-    slit_rows = slit_data.get("slit_rows", [])
-    slit_cols = slit_data.get("slit_cols", [])
-    plot_w = int(round(88 * 1.4))
-    plot_h = 54
+    g = pyramid_data.get("global_bands", [0.0, 0.0, 0.0, 0.0, 0.0])
+    g_t = pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0, 0.0, 0.0])
+    g_ctr = float(pyramid_data.get("scale_centroid", 0.0))
+    q = pyramid_data.get("quadrant_bands", {})
+    q_t = pyramid_data.get("quadrant_temporal_bands", {})
+    q_ctr = pyramid_data.get("quadrant_scale_centroids", {})
+    wd = wavelength_data or {}
+    q_wl = wd.get("quadrants", {})
+    g_wl = wd.get("wavelength_px")
 
-    # Spatial spectra for horizontal slits: top of slit, far left.
-    h_specs = sorted(slit_data.get("horizontal_spectra", []), key=lambda s: s.get("row", 0))
-    for idx, spec in enumerate(h_specs):
-        row = int(np.clip(spec.get("row", 0), 0, h - 1))
-        # Show frequency labels only on upper-left spatial display.
-        _draw_mini_spectrum(
-            out,
-            spec.get("xf", np.array([])),
-            spec.get("yf", np.array([])),
-            5,
-            row - (plot_h + 4),
-            plot_w=plot_w,
-            plot_h=plot_h,
-            max_freq=20.0,
-            unit_label="c/f",
-            show_labels=(idx == 0),
-            band_amps=spec.get("bands"),
-            band_centers=_SPATIAL_BAND_CENTERS,
-        )
+    centers = _flow_arrow_centers(h, w)
 
-    # Spatial spectra for vertical slits: bottom, beside each slit.
-    v_specs = slit_data.get("vertical_spectra", [])
-    if len(v_specs) >= 1:
-        left_col = int(np.clip(v_specs[0].get("col", slit_cols[0] if slit_cols else 0), 0, w - 1))
-        _draw_mini_spectrum(out, v_specs[0].get("xf", np.array([])), v_specs[0].get("yf", np.array([])), left_col + 5, h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False, band_amps=v_specs[0].get("bands"), band_centers=_SPATIAL_BAND_CENTERS)
-    if len(v_specs) >= 2:
-        right_col = int(np.clip(v_specs[1].get("col", slit_cols[1] if len(slit_cols) > 1 else w - 1), 0, w - 1))
-        _draw_mini_spectrum(out, v_specs[1].get("xf", np.array([])), v_specs[1].get("yf", np.array([])), right_col - (plot_w + 5), h - (plot_h + 4), plot_w=plot_w, plot_h=plot_h, max_freq=20.0, unit_label="c/f", show_labels=False, band_amps=v_specs[1].get("bands"), band_centers=_SPATIAL_BAND_CENTERS)
+    bar_count = len(_PYRAMID_BAND_COLORS)
+    group_w = (8 * bar_count) + (4 * max(0, bar_count - 1))
+    # spatial(52) + label(18) + s_centroid(24) + T_bars(52) + T_gap(16) + t_centroid(24)
+    group_h = 52 + 18 + 24 + 52 + 16 + 24
+    group_h_global = group_h
+    q_radius = 34
+    g_radius = 42
+    pad = 10
 
-    # Temporal spectra near quadrant points, nudged toward image center with 5 px gap.
-    qp = slit_data.get("quadrant_points", {})
-    qt = slit_data.get("quadrant_temporal", {})
-    center_x = w * 0.5
-    center_y = h * 0.5
-    for label, point in qp.items():
-        if label not in qt:
-            continue
-        cx = int(np.clip(point.get("x", 0), 0, w - 1))
-        cy = int(np.clip(point.get("y", 0), 0, h - 1))
-        toward_center_x = 1 if cx < center_x else -1
-        toward_center_y = 1 if cy < center_y else -1
+    for label in ("UL", "UR", "LL", "LR"):
+        cx, cy = centers[label]
+        if label in ("UL", "LL"):
+            # Bars on inward side (toward horizontal center), wavelength on opposite side.
+            x = cx + q_radius + pad
+            wl_x = cx - q_radius - pad - 10
+        else:
+            x = cx - q_radius - pad - group_w
+            wl_x = cx + q_radius + pad
+        y = cy - (group_h // 2)
+        x = int(np.clip(x, 14, max(14, w - 14 - group_w)))
+        y = int(np.clip(y, 24, max(24, h - 24 - group_h)))
+        _draw_pyramid_bar_group(out, x, y, q.get(label, [0.0] * bar_count), label,
+                    temporal_bands=q_t.get(label), centroid=q_ctr.get(label))
+        wl_val = (q_wl.get(label) or {}).get("wavelength_px")
+        wl_y = int(np.clip(cy - 34, 24, max(24, h - 24 - 68)))
+        wl_x = int(np.clip(wl_x, 10, max(10, w - 10 - 10)))
+        _draw_vertical_slider(out, wl_x, wl_y, wl_val, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
 
-        if toward_center_x > 0 and toward_center_y > 0:  # TL
-            px = cx + 5
-            py = cy + 5
-        elif toward_center_x < 0 and toward_center_y > 0:  # TR
-            px = cx - 5 - plot_w
-            py = cy + 5
-        elif toward_center_x > 0 and toward_center_y < 0:  # BL
-            px = cx + 5
-            py = cy - 5 - plot_h
-        else:  # BR
-            px = cx - 5 - plot_w
-            py = cy - 5 - plot_h
-
-        # Show frequency labels only on lower-right temporal display.
-        _draw_mini_spectrum(out, qt[label].get("xf", np.array([])), qt[label].get("yf", np.array([])), px, py, plot_w=plot_w, plot_h=plot_h, max_freq=6.0, unit_label="Hz", show_labels=(label == "BR"), band_amps=qt[label].get("bands"), band_centers=_TEMPORAL_BAND_CENTERS)
-
+    g_cx, g_cy = centers["G"]
+    g_bar_x = int(np.clip(g_cx + g_radius + pad, 14, max(14, w - 14 - group_w)))
+    g_bar_y = int(np.clip(g_cy + 14, 24, max(24, h - 24 - group_h_global)))
+    _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "GLOBAL S/T", temporal_bands=g_t, centroid=g_ctr)
+    g_wl_x = int(np.clip(g_cx - g_radius - pad - 10, 10, max(10, w - 10 - 10)))
+    g_wl_y = int(np.clip(g_cy + 14, 24, max(24, h - 24 - 68)))
+    _draw_vertical_slider(out, g_wl_x, g_wl_y, g_wl, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
     return out
 
 
@@ -717,22 +725,29 @@ def make_display_frame(
             cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 2)
 
     if flow_overlay:
-        # Fast flow: cyan-blue vectors + arrows
+        fast_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_update_interval))
+        slow_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_slow_interval))
+        fast_arrow_color = _rate_hz_to_color(fast_rate_hz)
+        slow_arrow_color = _rate_hz_to_color(slow_rate_hz)
+
+        # Fast flow: color keyed by fast analysis rate
         out = draw_flow_overlay(out, analyzer.last_flow, color=(30, 180, 255), disp_scale=2.0)
         out = draw_quadrant_flow_arrows(out, analyzer.last_flow,
-                                        arrow_color=(80, 190, 255), global_color=(120, 220, 255),
-                                        circle_color=(200, 200, 200))
-        # Slow flow: normalize vector display to per-frame units (divide by interval)
+                                        arrow_color=fast_arrow_color, global_color=fast_arrow_color,
+                                        circle_color=(200, 200, 200),
+                                        global_rate_hz=fast_rate_hz, rate_side="right",
+                                        )
+        # Slow flow: color keyed by slow analysis rate
         slow_disp_scale = 2.0 / max(1, analyzer.flow_slow_interval)
         out = draw_flow_overlay(out, analyzer.last_flow_slow, color=(30, 100, 255), disp_scale=slow_disp_scale)
         out = draw_quadrant_flow_arrows(out, analyzer.last_flow_slow,
-                                        arrow_color=(30, 120, 255), global_color=(20, 80, 255),
-                                        circle_color=(160, 160, 160))
+                                        arrow_color=slow_arrow_color, global_color=slow_arrow_color,
+                                        circle_color=(160, 160, 160),
+                                        global_rate_hz=slow_rate_hz, rate_side="left",
+                                        )
 
     if spectrum_overlay:
-        slit = analysis["slit_data"]
-        out = draw_spectral_slits_overlay(out, slit, analysis.get("analysis_source", analysis["preprocess_display"]))
-        out = draw_local_spectral_plots(out, slit)
+        out = draw_pyramid_texture_bars(out, analysis.get("pyramid_data"), analysis.get("wavelength_data"))
 
     return out
 
@@ -964,7 +979,9 @@ def main():
         "screen_blend_ms",
         "pre_blur_ms",
         "contours_ms",
-        "slits_ms",
+        "pyramid_ms",
+        "lbp_ms",
+        "gabor_ms",
         "flow_ms",
         "fusion_ms",
         "render_ms",
@@ -981,7 +998,9 @@ def main():
         "screen_blend_ms": 0.0,
         "pre_blur_ms": 0.0,
         "contours_ms": 0.0,
-        "slits_ms": 0.0,
+        "pyramid_ms": 0.0,
+        "lbp_ms": 0.0,
+        "gabor_ms": 0.0,
         "flow_ms": 0.0,
         "fusion_ms": 0.0,
         "render_ms": 0.0,
@@ -995,7 +1014,9 @@ def main():
         "screen_blend_pct": 0.0,
         "pre_blur_pct": 0.0,
         "contours_pct": 0.0,
-        "slits_pct": 0.0,
+        "pyramid_pct": 0.0,
+        "lbp_pct": 0.0,
+        "gabor_pct": 0.0,
         "flow_pct": 0.0,
         "fusion_pct": 0.0,
         "render_pct": 0.0,
@@ -1094,6 +1115,8 @@ def main():
             "editing_mask": editing_mask,
             "step_mode": step,
             "flow_interval": analyzer.flow_update_interval,
+            "flow_slow_interval": analyzer.flow_slow_interval,
+            "flow_update_auto": analyzer.enable_auto_flow_update_interval,
             "flow_detail_mode": flow_detail_mode,
             "temporal_diff_filter": analyzer.enable_temporal_difference_filter,
             "temporal_diff_polarity": analyzer.temporal_diff_polarity,
@@ -1108,6 +1131,8 @@ def main():
             "gain_label": ["off", "-25%", "+50%", "auto"][max(0, min(3, analyzer.gain_mode))],
             "contour_motion_filter": analyzer.enable_contour_motion_filter,
             "static_contours": analyzer.show_static_contours,
+            "lbp_analysis": analyzer.enable_lbp_analysis,
+            "gabor_analysis": analyzer.enable_gabor_analysis,
             "contour_motion_threshold_label": (
                 "off"
                 if float(analyzer.contour_motion_threshold_px) <= 0.0
@@ -1146,6 +1171,10 @@ def main():
             current_profile_stats,
             show_cpu_profile,
             flow_data=analysis.get("flow_data") if analysis else None,
+            pyramid_data=analysis.get("pyramid_data") if analysis else None,
+            wavelength_data=analysis.get("wavelength_data") if analysis else None,
+            lbp_data=analysis.get("lbp_data") if analysis else None,
+            gabor_data=analysis.get("gabor_data") if analysis else None,
         )
 
         if analyzer.show_mask and analyzer.mask_points:
@@ -1187,7 +1216,9 @@ def main():
         profile_windows["screen_blend_ms"].append(analysis["timings"].get("screen_blend_ms", 0.0))
         profile_windows["pre_blur_ms"].append(analysis["timings"].get("pre_blur_ms", 0.0))
         profile_windows["contours_ms"].append(analysis["timings"].get("contours_ms", 0.0))
-        profile_windows["slits_ms"].append(analysis["timings"].get("slits_ms", 0.0))
+        profile_windows["pyramid_ms"].append(analysis["timings"].get("pyramid_ms", 0.0))
+        profile_windows["lbp_ms"].append(analysis["timings"].get("lbp_ms", 0.0))
+        profile_windows["gabor_ms"].append(analysis["timings"].get("gabor_ms", 0.0))
         profile_windows["flow_ms"].append(analysis["timings"].get("flow_ms", 0.0))
         profile_windows["fusion_ms"].append(analysis["timings"].get("fusion_ms", 0.0))
         loop_end = time.perf_counter()
@@ -1204,7 +1235,9 @@ def main():
                 "screen_blend_pct": avg_profile_ms["screen_blend_ms"] / total_for_pct * 100.0,
                 "pre_blur_pct": avg_profile_ms["pre_blur_ms"] / total_for_pct * 100.0,
                 "contours_pct": avg_profile_ms["contours_ms"] / total_for_pct * 100.0,
-                "slits_pct": avg_profile_ms["slits_ms"] / total_for_pct * 100.0,
+                "pyramid_pct": avg_profile_ms["pyramid_ms"] / total_for_pct * 100.0,
+                "lbp_pct": avg_profile_ms["lbp_ms"] / total_for_pct * 100.0,
+                "gabor_pct": avg_profile_ms["gabor_ms"] / total_for_pct * 100.0,
                 "flow_pct": avg_profile_ms["flow_ms"] / total_for_pct * 100.0,
                 "fusion_pct": avg_profile_ms["fusion_ms"] / total_for_pct * 100.0,
                 "render_pct": avg_profile_ms["render_ms"] / total_for_pct * 100.0,
@@ -1237,20 +1270,24 @@ def main():
         if key == ord("r"):
             show_threshold_overlay = not show_threshold_overlay
             analyzer.enable_threshold_filter = show_threshold_overlay
-            analyzer.last_slit_data = None
-            analyzer.last_spectral_update_t = 0.0
-            for hist in analyzer.slit_history:
-                hist.clear()
         if key == ord("s"):
             show_spectrum_overlay = not show_spectrum_overlay
         if key == ord("y"):
             show_cpu_profile = not show_cpu_profile
         if key == ord("m"):
             analyzer.show_mask = not analyzer.show_mask
+        if key == ord("j"):
+            analyzer.enable_lbp_analysis = not analyzer.enable_lbp_analysis
+            profile_windows["lbp_ms"].clear()
+        if key == ord("o"):
+            analyzer.enable_gabor_analysis = not analyzer.enable_gabor_analysis
+            profile_windows["gabor_ms"].clear()
         if key == ord("f"):
             next_idx = (flow_detail_modes.index(flow_detail_mode) + 1) % len(flow_detail_modes)
             flow_detail_mode = flow_detail_modes[next_idx]
             apply_flow_quality_for_current_mode(quality_idx)
+        if key == ord("i"):
+            analyzer.enable_auto_flow_update_interval = not analyzer.enable_auto_flow_update_interval
         if key == ord("t"):
             temporal_mode_idx = (temporal_mode_idx + 1) % len(temporal_modes)
             apply_temporal_mode(temporal_mode_idx)

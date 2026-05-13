@@ -6,6 +6,8 @@ import numpy as np
 from scipy.fft import rfft, rfftfreq
 from scipy.signal import iirpeak, lfilter
 
+from wavelength_detector import detect_wavelength
+
 
 def _clip01(value):
     return float(max(0.0, min(1.0, value)))
@@ -87,6 +89,20 @@ class WaveAnalyzer:
         self.last_flow = None
         self.last_flow_slow = None
         self.last_direction = 0.0
+        self.last_wavelength = None
+        self.last_wavelength_metrics = {
+            "wavelength_px": None,
+            "confidence": 0.0,
+            "horizontal_wavelength": None,
+            "vertical_wavelength": None,
+            "quadrants": {},
+        }
+        self.wl_use_median = True
+        self.prev_pyramid_bands = None
+        self.pyramid_temporal_activity = 0.0
+        self.pyramid_temporal_band_activity = [0.0, 0.0, 0.0, 0.0, 0.0]
+        self.prev_quadrant_bands = {}
+        self.quadrant_temporal_band_activity = {}
         self.last_flow_metrics = {
             "direction_deg": 0.0,
             "speed_norm": 0.0,
@@ -100,10 +116,28 @@ class WaveAnalyzer:
             "slow_speed_norm": 0.0,
             "slow_direction_deg": 0.0,
             "slow_coherence": 0.0,
+            "directional_source": "fast",
+            "directional_target_deg": 225.0,
+            "directional_global": {},
+            "directional_quadrants": {},
+            "directional_stripes": {},
+            "directional_best_quadrant": "-",
+            "directional_best_quadrant_support": 0.0,
+            "directional_best_stripe": "-",
+            "directional_best_stripe_support": 0.0,
         }
         # Multi-scale flow: slow scale compares frames flow_slow_interval apart.
         self.prev_flow_gray_slow = None
         self.flow_slow_interval = 8
+        self._flow_interval_smooth = 8.0   # EMA-smoothed float target for adaptive interval
+        self.enable_auto_flow_update_interval = True
+        self._flow_update_interval_smooth = 1.0
+        self.flow_update_interval_min = 1
+        self.flow_update_interval_max = 6
+        self.flow_direction_target_deg = 225.0
+        self.flow_direction_tolerance_deg = 45.0
+        self.flow_direction_stripe_count = 5
+        self.enable_flow_directional_scoring = True
         self._last_slow_metrics = None
         # Envelope follower for band amplitudes (fast attack, slow decay).
         self.band_env_attack_s = 0.1
@@ -151,6 +185,10 @@ class WaveAnalyzer:
         self.flow_poly_n = 5
         self.flow_poly_sigma = 1.2
         self.flow_flags = 0
+
+        # Optional texture descriptor stages.
+        self.enable_lbp_analysis = True
+        self.enable_gabor_analysis = True
 
         history_len = int(self.fps * 4.0)
         self.slit_history = [deque(maxlen=history_len) for _ in range(self.slit_count)]
@@ -243,6 +281,7 @@ class WaveAnalyzer:
             new_val = int(max(1, flow_update_interval))
             if new_val != self.flow_update_interval:
                 self.flow_update_interval = new_val
+                self._flow_update_interval_smooth = float(new_val)
                 changed = True
 
         if flow_pyr_scale is not None:
@@ -581,6 +620,271 @@ class WaveAnalyzer:
             "stability": stability,
         }
 
+    @staticmethod
+    def _pyramid_band_energies(gray_img, normalize=True):
+        """Compute 5-band texture energies from a Gaussian/Laplacian pyramid."""
+        if gray_img is None or gray_img.size == 0:
+            return [0.0, 0.0, 0.0, 0.0, 0.0]
+
+        base = gray_img.astype(np.float32) / 255.0
+        levels = [base]
+        for _ in range(5):
+            prev = levels[-1]
+            if prev.shape[0] < 8 or prev.shape[1] < 8:
+                break
+            levels.append(cv2.pyrDown(prev))
+
+        energies = [0.0, 0.0, 0.0, 0.0, 0.0]
+        lap_count = min(4, len(levels) - 1)
+        for i in range(lap_count):
+            up = cv2.pyrUp(levels[i + 1], dstsize=(levels[i].shape[1], levels[i].shape[0]))
+            band = levels[i] - up
+            energies[i] = float(np.mean(np.abs(band)))
+
+        # Coarse and extra-coarse are taken from the two deepest available
+        # lowpass levels, yielding one more octave of larger-scale structure.
+        if len(levels) >= 2:
+            energies[3] = max(energies[3], float(np.std(levels[-2])))
+            energies[4] = max(energies[4], float(np.std(levels[-1])))
+        elif len(levels) == 1:
+            energies[3] = float(np.std(levels[0]))
+
+        if not normalize:
+            return [float(e) for e in energies]
+
+        total = float(sum(energies)) + 1e-9
+        return [float(e / total) for e in energies]
+
+    @staticmethod
+    def _resize_for_texture_analysis(gray_img, max_dim=320):
+        if gray_img is None or gray_img.size == 0:
+            return gray_img
+        h, w = gray_img.shape[:2]
+        largest = max(h, w)
+        if largest <= max_dim:
+            return gray_img
+        scale = float(max_dim) / float(largest)
+        new_w = max(16, int(round(w * scale)))
+        new_h = max(16, int(round(h * scale)))
+        return cv2.resize(gray_img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    def _analyze_lbp_texture(self, gray_img):
+        """Dense LBP summary for local roughness and micro-texture stability."""
+        if gray_img is None or gray_img.size == 0:
+            return {
+                "lbp_mean": 0.0,
+                "lbp_std": 0.0,
+                "lbp_entropy": 0.0,
+                "lbp_uniform_ratio": 0.0,
+                "lbp_roughness": 0.0,
+                "lbp_dominant_code": 0,
+                "lbp_dominant_ratio": 0.0,
+                "lbp_histogram_16": [0.0] * 16,
+            }
+
+        view = self._resize_for_texture_analysis(gray_img, max_dim=320)
+        if min(view.shape[:2]) < 3:
+            return {
+                "lbp_mean": 0.0,
+                "lbp_std": 0.0,
+                "lbp_entropy": 0.0,
+                "lbp_uniform_ratio": 0.0,
+                "lbp_roughness": 0.0,
+                "lbp_dominant_code": 0,
+                "lbp_dominant_ratio": 0.0,
+                "lbp_histogram_16": [0.0] * 16,
+            }
+
+        padded = np.pad(view.astype(np.uint8), 1, mode="edge")
+        center = padded[1:-1, 1:-1]
+        neighbors = [
+            padded[:-2, :-2],
+            padded[:-2, 1:-1],
+            padded[:-2, 2:],
+            padded[1:-1, 2:],
+            padded[2:, 2:],
+            padded[2:, 1:-1],
+            padded[2:, :-2],
+            padded[1:-1, :-2],
+        ]
+
+        codes = np.zeros_like(center, dtype=np.uint8)
+        for bit, neighbor in enumerate(neighbors):
+            codes |= ((neighbor >= center).astype(np.uint8) << bit)
+
+        hist256 = np.bincount(codes.ravel(), minlength=256).astype(np.float32)
+        hist_sum = float(np.sum(hist256)) + 1e-9
+        hist256 /= hist_sum
+        hist16 = hist256.reshape(16, 16).sum(axis=1)
+
+        bits = ((codes[..., None] >> np.arange(8, dtype=np.uint8)) & 1).astype(np.uint8)
+        transitions = np.sum(bits != np.roll(bits, -1, axis=2), axis=2)
+        uniform_ratio = float(np.mean(transitions <= 2))
+
+        dominant_code = int(np.argmax(hist256))
+        dominant_ratio = float(hist256[dominant_code])
+        entropy = float(-np.sum(hist256 * np.log2(hist256 + 1e-9)))
+        lbp_mean = float(np.mean(codes)) / 255.0
+        lbp_std = float(np.std(codes)) / 255.0
+
+        return {
+            "lbp_mean": lbp_mean,
+            "lbp_std": lbp_std,
+            "lbp_entropy": entropy,
+            "lbp_uniform_ratio": uniform_ratio,
+            "lbp_roughness": float(1.0 - dominant_ratio),
+            "lbp_dominant_code": dominant_code,
+            "lbp_dominant_ratio": dominant_ratio,
+            "lbp_histogram_16": [float(v) for v in hist16],
+        }
+
+    def _analyze_gabor_texture(self, gray_img):
+        """Small Gabor bank for oriented wave/ripple energy."""
+        if gray_img is None or gray_img.size == 0:
+            return {
+                "orientations_deg": [0.0, 45.0, 90.0, 135.0],
+                "wavelengths_px": [4.0, 8.0, 16.0],
+                "orientation_energy": [0.0, 0.0, 0.0, 0.0],
+                "wavelength_energy": [0.0, 0.0, 0.0],
+                "response_grid": [[0.0, 0.0, 0.0] for _ in range(4)],
+                "dominant_orientation_deg": 0.0,
+                "dominant_wavelength_px": 0.0,
+                "gabor_anisotropy": 0.0,
+                "gabor_energy": 0.0,
+            }
+
+        view = self._resize_for_texture_analysis(gray_img, max_dim=256)
+        if min(view.shape[:2]) < 9:
+            return {
+                "orientations_deg": [0.0, 45.0, 90.0, 135.0],
+                "wavelengths_px": [4.0, 8.0, 16.0],
+                "orientation_energy": [0.0, 0.0, 0.0, 0.0],
+                "wavelength_energy": [0.0, 0.0, 0.0],
+                "response_grid": [[0.0, 0.0, 0.0] for _ in range(4)],
+                "dominant_orientation_deg": 0.0,
+                "dominant_wavelength_px": 0.0,
+                "gabor_anisotropy": 0.0,
+                "gabor_energy": 0.0,
+            }
+
+        work = cv2.GaussianBlur(view.astype(np.float32), (3, 3), 0)
+        orientations = [0.0, 45.0, 90.0, 135.0]
+        wavelengths = [4.0, 8.0, 16.0]
+        response_grid = []
+
+        for theta_deg in orientations:
+            theta = np.deg2rad(theta_deg)
+            row = []
+            for wavelength_px in wavelengths:
+                sigma = 0.56 * wavelength_px
+                ksize = int(max(9, round(wavelength_px * 6.0))) | 1
+                kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, wavelength_px, 0.5, 0.0, ktype=cv2.CV_32F)
+                response = cv2.filter2D(work, cv2.CV_32F, kernel)
+                row.append(float(np.mean(np.abs(response))))
+            response_grid.append(row)
+
+        response_arr = np.asarray(response_grid, dtype=np.float32)
+        orientation_energy = np.mean(response_arr, axis=1)
+        wavelength_energy = np.mean(response_arr, axis=0)
+        total_energy = float(np.sum(response_arr)) + 1e-9
+        dominant_idx = int(np.argmax(response_arr))
+        dom_orient_idx, dom_wl_idx = np.unravel_index(dominant_idx, response_arr.shape)
+        anisotropy = float((np.max(orientation_energy) - np.mean(orientation_energy)) / (np.mean(orientation_energy) + 1e-9))
+
+        return {
+            "orientations_deg": orientations,
+            "wavelengths_px": wavelengths,
+            "orientation_energy": [float(v) for v in orientation_energy],
+            "wavelength_energy": [float(v) for v in wavelength_energy],
+            "response_grid": [[float(v) for v in row] for row in response_grid],
+            "dominant_orientation_deg": float(orientations[dom_orient_idx]),
+            "dominant_wavelength_px": float(wavelengths[dom_wl_idx]),
+            "gabor_anisotropy": anisotropy,
+            "gabor_energy": total_energy,
+        }
+
+    def _analyze_pyramid_texture(self, roi_gray):
+        h, w = roi_gray.shape
+        half_h = h // 2
+        half_w = w // 2
+
+        quadrants = {
+            "UL": roi_gray[0:half_h, 0:half_w],
+            "UR": roi_gray[0:half_h, half_w:w],
+            "LL": roi_gray[half_h:h, 0:half_w],
+            "LR": roi_gray[half_h:h, half_w:w],
+        }
+
+        quadrant_bands = {}
+        quadrant_raw_bands = {}
+        for label, block in quadrants.items():
+            if block.size == 0 or min(block.shape[:2]) < 8:
+                quadrant_bands[label] = [0.0, 0.0, 0.0, 0.0, 0.0]
+                quadrant_raw_bands[label] = [0.0, 0.0, 0.0, 0.0, 0.0]
+            else:
+                quadrant_bands[label] = self._pyramid_band_energies(block)
+                quadrant_raw_bands[label] = self._pyramid_band_energies(block, normalize=False)
+
+        global_bands = self._pyramid_band_energies(roi_gray)
+        global_raw_bands = self._pyramid_band_energies(roi_gray, normalize=False)
+        curr_bands = np.asarray(global_raw_bands, dtype=np.float32)
+        _TEMPORAL_GAIN = 350.0
+        if self.prev_pyramid_bands is None:
+            band_delta = np.zeros_like(curr_bands)
+        else:
+            band_delta = np.abs(curr_bands - self.prev_pyramid_bands)
+        # Raw energies move more with true scene change than normalized ratios.
+        # sqrt shape enhances low-level discrimination; 0.5 scale keeps headroom.
+        def _t_shape(x):
+            return 0.5 * float(np.sqrt(np.clip(x, 0.0, 1.0)))
+        temporal_activity_now = _t_shape(_TEMPORAL_GAIN * np.sum(band_delta))
+        self.pyramid_temporal_activity = (0.82 * self.pyramid_temporal_activity) + (0.18 * temporal_activity_now)
+        self.pyramid_temporal_band_activity = [
+            float((0.82 * prev) + (0.18 * _t_shape(_TEMPORAL_GAIN * delta)))
+            for prev, delta in zip(self.pyramid_temporal_band_activity, band_delta)
+        ]
+        self.prev_pyramid_bands = curr_bands
+
+        # Per-quadrant temporal band activity
+        quadrant_temporal_bands = {}
+        for qlabel, qbands in quadrant_raw_bands.items():
+            qcurr = np.asarray(qbands, dtype=np.float32)
+            qprev = self.prev_quadrant_bands.get(qlabel)
+            if qprev is None:
+                qdelta = np.zeros(5, dtype=np.float32)
+            else:
+                qdelta = np.abs(qcurr - qprev)
+            prev_qt = self.quadrant_temporal_band_activity.get(qlabel, [0.0] * 5)
+            new_qt = [
+                float((0.82 * p) + (0.18 * _t_shape(_TEMPORAL_GAIN * d)))
+                for p, d in zip(prev_qt, qdelta)
+            ]
+            self.quadrant_temporal_band_activity[qlabel] = new_qt
+            quadrant_temporal_bands[qlabel] = new_qt
+            self.prev_quadrant_bands[qlabel] = qcurr
+
+        quadrant_scale_centroids = {}
+        for qlabel, qbands in quadrant_bands.items():
+            qarr = np.asarray(qbands, dtype=np.float32)
+            quadrant_scale_centroids[qlabel] = float(np.dot(np.arange(5, dtype=np.float32), qarr) / 4.0)
+
+        dominant_idx = int(np.argmax(np.asarray(global_bands, dtype=np.float32)))
+        centroid = float(np.dot(np.arange(5, dtype=np.float32), np.asarray(global_bands, dtype=np.float32))) / 4.0
+        band_labels = ["fine", "mid-fine", "mid-coarse", "coarse", "extra-coarse"]
+
+        return {
+            "global_bands": global_bands,
+            "quadrant_bands": quadrant_bands,
+            "band_labels": band_labels,
+            "dominant_scale_index": dominant_idx,
+            "dominant_scale_label": band_labels[dominant_idx],
+            "scale_centroid": centroid,
+            "temporal_activity": float(self.pyramid_temporal_activity),
+            "temporal_band_activity": list(self.pyramid_temporal_band_activity),
+            "quadrant_temporal_bands": quadrant_temporal_bands,
+            "quadrant_scale_centroids": quadrant_scale_centroids,
+        }
+
     def _slit_rows(self, h):
         if self.slit_count <= 1:
             return [h // 2]
@@ -849,7 +1153,181 @@ class WaveAnalyzer:
             "activity": activity,
         }
 
-    def _analyze_flow(self, roi_gray):
+    def _adapt_flow_interval(self, scale_centroid, wavelength_px):
+        """Adapt flow_slow_interval based on prevalent spatial scale.
+
+        Coarser texture / longer wavelength → larger interval so the slow-flow
+        baseline spans enough temporal distance to reveal wave-period motion.
+        Fine/short-wavelength scenes → smaller interval for faster responsiveness.
+
+        scale_centroid: [0, 1]  0=fine  1=extra-coarse  (from pyramid analysis)
+        wavelength_px:  pixels or None
+        """
+        # Centroid maps 0→4 frames, 1→20 frames (slightly faster slow-flow updates).
+        interval_from_centroid = 4.0 + scale_centroid * 16.0
+
+        if wavelength_px is not None and wavelength_px > 0:
+            # Log-map: 10 px→4 frames, 300 px→20 frames
+            wl_norm = float(np.clip(
+                np.log(max(float(wavelength_px), 1.0) / 10.0) / np.log(300.0 / 10.0),
+                0.0, 1.0
+            ))
+            interval_from_wl = 4.0 + wl_norm * 16.0
+            # Blend: wavelength contributes more when it's in the confident long range
+            wl_weight = wl_norm * 0.6
+            target = (1.0 - wl_weight) * interval_from_centroid + wl_weight * interval_from_wl
+        else:
+            target = interval_from_centroid
+
+        target = float(np.clip(target, 2.0, 24.0))
+        # Slow EMA (~60-frame time constant) to prevent abrupt interval jumps
+        self._flow_interval_smooth += 0.016 * (target - self._flow_interval_smooth)
+        self.flow_slow_interval = max(2, min(24, int(round(self._flow_interval_smooth))))
+
+    def _adapt_flow_update_interval(self, fast_metrics, temporal_centroid_hz=0.0):
+        """Adapt fast-flow update interval to scene dynamics and temporal content."""
+        if not self.enable_auto_flow_update_interval:
+            return
+
+        activity = float(np.clip(fast_metrics.get("activity", 0.0), 0.0, 1.0))
+        speed = float(np.clip(fast_metrics.get("speed_norm", 0.0), 0.0, 1.0))
+        coherence = float(np.clip(fast_metrics.get("coherence", 0.0), 0.0, 1.0))
+
+        # Low motion/uncertain scenes keep updates denser for subtle-wave tracking.
+        motion = max(activity, speed)
+        target = 1.0 + 3.0 * motion
+        if coherence < 0.35:
+            target -= 0.75
+
+        # Keep update rate above the dominant temporal content when available.
+        tc_hz = float(max(0.0, temporal_centroid_hz or 0.0))
+        if tc_hz > 0.0 and self.fps > 0.0:
+            min_rate_hz = max(2.0, 4.0 * tc_hz)
+            max_interval_from_temporal = float(self.fps) / min_rate_hz
+            target = min(target, max_interval_from_temporal)
+
+        lo = float(max(1, int(self.flow_update_interval_min)))
+        hi = float(max(lo, int(self.flow_update_interval_max)))
+        target = float(np.clip(target, lo, hi))
+
+        self._flow_update_interval_smooth += 0.08 * (target - self._flow_update_interval_smooth)
+        self.flow_update_interval = max(int(lo), min(int(hi), int(round(self._flow_update_interval_smooth))))
+
+    @staticmethod
+    def _flow_directional_region_metrics(mag, ang, region_mask, target_rad, tolerance_deg):
+        active = region_mask & (mag > 1e-6)
+        if not np.any(active):
+            return {
+                "support": 0.0,
+                "signed_score": 0.0,
+                "hit_ratio": 0.0,
+                "activity": 0.0,
+                "coherence": 0.0,
+                "mean_direction_deg": 0.0,
+            }
+
+        w = mag[active]
+        th = ang[active]
+        wsum = float(np.sum(w)) + 1e-6
+
+        cos_delta = np.cos(th - target_rad)
+        support = float(np.sum(w * np.maximum(cos_delta, 0.0)) / wsum)
+        signed_score = float(np.sum(w * cos_delta) / wsum)
+
+        tol_rad = np.radians(float(max(1.0, tolerance_deg)))
+        hits = np.abs(np.angle(np.exp(1j * (th - target_rad)))) <= tol_rad
+        hit_ratio = float(np.mean(hits.astype(np.float32)))
+
+        wx = float(np.sum(np.cos(th) * w))
+        wy = float(np.sum(np.sin(th) * w))
+        coherence = _clip01(float(np.sqrt(wx * wx + wy * wy) / wsum))
+        mean_direction = float((np.degrees(np.arctan2(wy, wx)) + 360.0) % 360.0)
+        activity = _clip01(float(np.mean(w)) / 8.0)
+
+        return {
+            "support": _clip01(support),
+            "signed_score": float(np.clip(signed_score, -1.0, 1.0)),
+            "hit_ratio": _clip01(hit_ratio),
+            "activity": activity,
+            "coherence": coherence,
+            "mean_direction_deg": mean_direction,
+        }
+
+    def _flow_directional_scores(self, flow, target_direction_deg=225.0, tolerance_deg=45.0, stripe_count=5):
+        if flow is None:
+            return {
+                "target_deg": float(target_direction_deg),
+                "global": {},
+                "quadrants": {},
+                "stripes": {},
+                "best_quadrant": "-",
+                "best_quadrant_support": 0.0,
+                "best_stripe": "-",
+                "best_stripe_support": 0.0,
+            }
+
+        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        h, w = mag.shape
+        yy, xx = np.mgrid[0:h, 0:w]
+        target_rad = np.radians(float(target_direction_deg))
+
+        global_m = self._flow_directional_region_metrics(
+            mag,
+            ang,
+            np.ones((h, w), dtype=bool),
+            target_rad,
+            tolerance_deg,
+        )
+
+        half_h = h // 2
+        half_w = w // 2
+        quad_masks = {
+            "UL": (yy < half_h) & (xx < half_w),
+            "UR": (yy < half_h) & (xx >= half_w),
+            "LL": (yy >= half_h) & (xx < half_w),
+            "LR": (yy >= half_h) & (xx >= half_w),
+        }
+        quadrants = {
+            name: self._flow_directional_region_metrics(mag, ang, qmask, target_rad, tolerance_deg)
+            for name, qmask in quad_masks.items()
+        }
+
+        stripes = {}
+        stripe_count = max(2, int(stripe_count))
+        diag_coord = xx.astype(np.float32) + yy.astype(np.float32)
+        dmin = float(np.min(diag_coord))
+        dmax = float(np.max(diag_coord))
+        edges = np.linspace(dmin, dmax, stripe_count + 1)
+        for i in range(stripe_count):
+            lo = edges[i]
+            hi = edges[i + 1]
+            smask = (diag_coord >= lo) & ((diag_coord <= hi) if i == (stripe_count - 1) else (diag_coord < hi))
+            stripes[f"D{i}"] = self._flow_directional_region_metrics(mag, ang, smask, target_rad, tolerance_deg)
+
+        best_quadrant = "-"
+        best_quadrant_support = 0.0
+        if quadrants:
+            best_quadrant = max(quadrants.keys(), key=lambda k: quadrants[k].get("support", 0.0))
+            best_quadrant_support = float(quadrants[best_quadrant].get("support", 0.0))
+
+        best_stripe = "-"
+        best_stripe_support = 0.0
+        if stripes:
+            best_stripe = max(stripes.keys(), key=lambda k: stripes[k].get("support", 0.0))
+            best_stripe_support = float(stripes[best_stripe].get("support", 0.0))
+
+        return {
+            "target_deg": float(target_direction_deg),
+            "global": global_m,
+            "quadrants": quadrants,
+            "stripes": stripes,
+            "best_quadrant": best_quadrant,
+            "best_quadrant_support": best_quadrant_support,
+            "best_stripe": best_stripe,
+            "best_stripe_support": best_stripe_support,
+        }
+
+    def _analyze_flow(self, roi_gray, temporal_centroid_hz=0.0):
         """Multi-scale optical flow: fast scale (adjacent frames) + slow scale (N frames apart)."""
         flow_data = dict(self.last_flow_metrics)
 
@@ -859,39 +1337,44 @@ class WaveAnalyzer:
         small_fast = cv2.resize(roi_gray, (fast_w, fast_h), interpolation=cv2.INTER_AREA)
 
         self.flow_frame_index += 1
-        should_update = (self.flow_frame_index % self.flow_update_interval) == 0
+        should_update = (self.flow_frame_index % max(1, int(self.flow_update_interval))) == 0
+        fast_ready = True
 
         if self.prev_flow_gray is None:
             self.prev_flow_gray = small_fast
-            self.prev_flow_gray_slow = None
-            return flow_data
-
-        if self.prev_flow_gray.shape != small_fast.shape:
+            fast_ready = False
+        elif self.prev_flow_gray.shape != small_fast.shape:
             self.prev_flow_gray = small_fast
             self.prev_flow_gray_slow = None
             self._last_slow_metrics = None
             self.last_flow = None
             return flow_data
 
-        if not should_update:
-            self.prev_flow_gray = small_fast
-            return flow_data
+        fast_m = {
+            "activity": float(flow_data.get("fast_activity", 0.0)),
+            "speed_norm": float(flow_data.get("fast_speed_norm", 0.0)),
+            "direction_deg": float(flow_data.get("fast_direction_deg", 0.0)),
+            "coherence": float(flow_data.get("fast_coherence", 0.0)),
+        }
 
-        fast_flow = cv2.calcOpticalFlowFarneback(
-            self.prev_flow_gray,
-            small_fast,
-            None,
-            self.flow_pyr_scale,
-            self.flow_levels,
-            self.flow_winsize,
-            self.flow_iterations,
-            self.flow_poly_n,
-            self.flow_poly_sigma,
-            self.flow_flags,
-        )
+        if should_update and fast_ready:
+            fast_flow = cv2.calcOpticalFlowFarneback(
+                self.prev_flow_gray,
+                small_fast,
+                None,
+                self.flow_pyr_scale,
+                self.flow_levels,
+                self.flow_winsize,
+                self.flow_iterations,
+                self.flow_poly_n,
+                self.flow_poly_sigma,
+                self.flow_flags,
+            )
+            self.last_flow = fast_flow
+            fast_m = self._flow_metrics(fast_flow, min_mag=0.25, speed_divisor=6.0, activity_divisor=8.0)
+            self._adapt_flow_update_interval(fast_m, temporal_centroid_hz=temporal_centroid_hz)
+
         self.prev_flow_gray = small_fast
-        self.last_flow = fast_flow
-        fast_m = self._flow_metrics(fast_flow, min_mag=0.25, speed_divisor=6.0, activity_divisor=8.0)
 
         # --- Slow scale: compare frames flow_slow_interval apart at ~0.15x resolution ---
         # Captures large/slow movements that barely move between adjacent frames.
@@ -900,7 +1383,7 @@ class WaveAnalyzer:
         slow_h = max(12, int(roi_gray.shape[0] * slow_scale))
         small_slow = cv2.resize(roi_gray, (slow_w, slow_h), interpolation=cv2.INTER_AREA)
 
-        is_slow_update = (self.flow_frame_index % self.flow_slow_interval) == 0
+        is_slow_update = (self.flow_frame_index % max(1, int(self.flow_slow_interval))) == 0
         if (
             is_slow_update
             and self.prev_flow_gray_slow is not None
@@ -923,7 +1406,7 @@ class WaveAnalyzer:
             n = float(self.flow_slow_interval)
             self._last_slow_metrics = self._flow_metrics(
                 slow_flow,
-                min_mag=0.25 * n,
+                min_mag=0.16 * n,
                 speed_divisor=6.0 * n,
                 activity_divisor=8.0 * n,
             )
@@ -968,6 +1451,37 @@ class WaveAnalyzer:
             "slow_direction_deg": slow_m["direction_deg"] if slow_m else 0.0,
             "slow_coherence": slow_m["coherence"] if slow_m else 0.0,
         })
+
+        if self.enable_flow_directional_scoring:
+            primary_flow = self.last_flow
+            primary_source = "fast"
+            if (
+                slow_m is not None
+                and self.last_flow_slow is not None
+                and (slow_m["activity"] * slow_m["coherence"])
+                >= (fast_m["activity"] * fast_m["coherence"]) * 0.9
+            ):
+                primary_flow = self.last_flow_slow
+                primary_source = "slow"
+
+            dir_scores = self._flow_directional_scores(
+                primary_flow,
+                target_direction_deg=self.flow_direction_target_deg,
+                tolerance_deg=self.flow_direction_tolerance_deg,
+                stripe_count=self.flow_direction_stripe_count,
+            )
+            flow_data.update({
+                "directional_source": primary_source,
+                "directional_target_deg": float(self.flow_direction_target_deg),
+                "directional_global": dir_scores.get("global", {}),
+                "directional_quadrants": dir_scores.get("quadrants", {}),
+                "directional_stripes": dir_scores.get("stripes", {}),
+                "directional_best_quadrant": dir_scores.get("best_quadrant", "-"),
+                "directional_best_quadrant_support": float(dir_scores.get("best_quadrant_support", 0.0)),
+                "directional_best_stripe": dir_scores.get("best_stripe", "-"),
+                "directional_best_stripe_support": float(dir_scores.get("best_stripe_support", 0.0)),
+            })
+
         self.last_flow_metrics = dict(flow_data)
         return flow_data
 
@@ -999,10 +1513,13 @@ class WaveAnalyzer:
 
         return out
 
-    def _fuse(self, contours, slits, flow):
+    def _fuse(self, contours, pyramid, flow):
+        global_bands = pyramid.get("global_bands", [0.0, 0.0, 0.0, 0.0, 0.0])
+        dominant_idx = int(pyramid.get("dominant_scale_index", 0))
         raw = {
-            "wave_frequency_hz": slits["temporal_peak_common"],
-            "freq_centroid_hz": slits.get("temporal_centroid_hz", 0.0),
+            # Kept for OSC/UI compatibility; now maps to dominant texture scale.
+            "wave_frequency_hz": float(dominant_idx),
+            "freq_centroid_hz": float(pyramid.get("scale_centroid", 0.0)),
             "bump_size_common": contours["common"],
             "bump_size_spread": contours["spread"],
             "bump_size_max": contours.get("max", 0.0),
@@ -1011,7 +1528,7 @@ class WaveAnalyzer:
             "movement_direction_deg": flow["direction_deg"],
             "movement_speed_norm": flow["speed_norm"],
             "activity": _clip01(0.45 * flow["activity"] + 0.55 * min(1.0, contours["fill_ratio"] * 4.0)),
-            "confidence": _clip01(0.4 * contours["stability"] + 0.3 * flow["coherence"] + 0.3 * (1.0 - abs(slits["band_high"] - 0.33))),
+            "confidence": _clip01(0.4 * contours["stability"] + 0.3 * flow["coherence"] + 0.3 * (1.0 - abs(global_bands[-1] - 0.2))),
         }
 
         smoothed = {
@@ -1057,57 +1574,102 @@ class WaveAnalyzer:
         timers["contours_ms"] = (perf_counter() - t1) * 1000.0
 
         t2 = perf_counter()
-        # Tap spectral analysis from the threshold stage so thresholding affects
-        # both slit spectra and temporal band measurements.
-        if run_full:
-            # Keep all temporal samples, independent of FFT recompute cadence.
-            self._update_temporal_histories(analysis_source)
-        spectral_interval_s = 1.0 / max(0.1, float(self.spectral_update_hz))
-        now_s = perf_counter()
-        run_spectral = (
-            run_full and (
-                self.last_slit_data is None
-                or (now_s - self.last_spectral_update_t) >= spectral_interval_s
-            )
-        )
-        if run_spectral:
-            slit_data = self._analyze_slits(analysis_source, update_temporal_history=False)
-            self.last_slit_data = slit_data
-            self.last_spectral_update_t = now_s
-        elif self.last_slit_data is not None:
-            slit_data = self.last_slit_data
+        pyramid_data = self._analyze_pyramid_texture(analysis_source)
+        timers["pyramid_ms"] = (perf_counter() - t2) * 1000.0
+
+        if self.enable_lbp_analysis:
+            t_lbp = perf_counter()
+            lbp_data = self._analyze_lbp_texture(blur)
+            timers["lbp_ms"] = (perf_counter() - t_lbp) * 1000.0
         else:
-            slit_data = {
-                "spatial_peak_common": 0.0,
-                "temporal_peak_common": self.smoothed["wave_frequency_hz"],
-                "temporal_centroid_hz": self.smoothed["freq_centroid_hz"],
-                "band_low": 0.0,
-                "band_mid": 0.0,
-                "band_high": 0.0,
-                "spatial_xf": np.array([]),
-                "spatial_yf": np.array([]),
-                "quadrant_summaries": {
-                    "UL": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
-                    "UR": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
-                    "LL": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
-                    "LR": {"peak": 0.0, "band_low": 0.0, "band_mid": 0.0, "band_high": 0.0, "dominant": "-"},
-                },
-                "slit_rows": [],
-                "slit_cols": [],
-                "temporal_xf": np.array([]),
-                "temporal_yf": np.array([]),
-                "quadrant_temporal": {},
+            lbp_data = {
+                "lbp_mean": 0.0,
+                "lbp_std": 0.0,
+                "lbp_entropy": 0.0,
+                "lbp_uniform_ratio": 0.0,
+                "lbp_roughness": 0.0,
+                "lbp_dominant_code": 0,
+                "lbp_dominant_ratio": 0.0,
+                "lbp_histogram_16": [0.0] * 16,
             }
-        timers["slits_ms"] = (perf_counter() - t2) * 1000.0
+            timers["lbp_ms"] = 0.0
+
+        if self.enable_gabor_analysis:
+            t_gabor = perf_counter()
+            gabor_data = self._analyze_gabor_texture(blur)
+            timers["gabor_ms"] = (perf_counter() - t_gabor) * 1000.0
+        else:
+            gabor_data = {
+                "orientations_deg": [0.0, 45.0, 90.0, 135.0],
+                "wavelengths_px": [4.0, 8.0, 16.0],
+                "orientation_energy": [0.0, 0.0, 0.0, 0.0],
+                "wavelength_energy": [0.0, 0.0, 0.0],
+                "response_grid": [[0.0, 0.0, 0.0] for _ in range(4)],
+                "dominant_orientation_deg": 0.0,
+                "dominant_wavelength_px": 0.0,
+                "gabor_anisotropy": 0.0,
+                "gabor_energy": 0.0,
+            }
+            timers["gabor_ms"] = 0.0
+
+        # Adapt slow-flow interval to prevalent wave scale before computing flow.
+        # Uses self.last_wavelength from the previous frame (one-frame lag, negligible).
+        self._adapt_flow_interval(
+            pyramid_data.get("scale_centroid", 0.5),
+            self.last_wavelength,
+        )
 
         t3 = perf_counter()
         # Optical flow tracks gradients and local texture, so it is more stable
         # on the pre-threshold blurred signal than on a binary image.
-        flow_data = self._analyze_flow(blur)
+        flow_data = self._analyze_flow(
+            blur,
+            temporal_centroid_hz=pyramid_data.get("temporal_centroid_hz", 0.0),
+        )
         timers["flow_ms"] = (perf_counter() - t3) * 1000.0
 
+        t_wl = perf_counter()
+        # Wavelength detection: find dominant spatial pattern scale.
+        wavelength_data = detect_wavelength(blur, direction="both", lag_range=(3, 300), min_confidence=0.15,
+                                             use_median=self.wl_use_median)
+
+        # Per-quadrant wavelength detection uses the same preprocessing settings
+        # so local wave scale can be compared against the global estimate.
+        h_blur, w_blur = blur.shape[:2]
+        h_mid = h_blur // 2
+        w_mid = w_blur // 2
+        quadrant_rois = {
+            "UL": blur[:h_mid, :w_mid],
+            "UR": blur[:h_mid, w_mid:],
+            "LL": blur[h_mid:, :w_mid],
+            "LR": blur[h_mid:, w_mid:],
+        }
+        quadrant_wavelengths = {}
+        for q_name, q_img in quadrant_rois.items():
+            if q_img.size == 0 or min(q_img.shape[:2]) < 16:
+                quadrant_wavelengths[q_name] = {
+                    "wavelength_px": None,
+                    "confidence": 0.0,
+                    "horizontal_wavelength": None,
+                    "vertical_wavelength": None,
+                }
+                continue
+            q_max_lag = max(8, min(300, min(q_img.shape[:2]) // 2))
+            quadrant_wavelengths[q_name] = detect_wavelength(
+                q_img,
+                direction="both",
+                lag_range=(3, q_max_lag),
+                min_confidence=0.15,
+                use_median=self.wl_use_median,
+            )
+        wavelength_data["quadrants"] = quadrant_wavelengths
+
+        self.last_wavelength = wavelength_data["wavelength_px"]
+        self.last_wavelength_metrics = dict(wavelength_data)
+        timers["wavelength_ms"] = (perf_counter() - t_wl) * 1000.0
+
         t4 = perf_counter()
-        raw, smoothed = self._fuse(contour_data, slit_data, flow_data)
+        raw, smoothed = self._fuse(contour_data, pyramid_data, flow_data)
         timers["fusion_ms"] = (perf_counter() - t4) * 1000.0
         timers["total_ms"] = sum(timers.values())
 
@@ -1121,8 +1683,11 @@ class WaveAnalyzer:
             "contours": self.last_contours,
             "static_contours": self.last_static_contours,
             "contour_data": contour_data,
-            "slit_data": slit_data,
+            "pyramid_data": pyramid_data,
+            "lbp_data": lbp_data,
+            "gabor_data": gabor_data,
             "flow_data": flow_data,
+            "wavelength_data": wavelength_data,
             "raw": raw,
             "smoothed": smoothed,
             "timings": timers,
