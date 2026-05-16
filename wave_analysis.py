@@ -703,6 +703,8 @@ class WaveAnalyzer:
             "lbp_roughness": 0.0,
             "lbp_dominant_code": 0,
             "lbp_dominant_ratio": 0.0,
+            "lbp_roughness_entropy": 0.0,
+            "lbp_uniform_rough_entr": 0.0,
             "lbp_histogram_16": [0.0] * 16,
         }
         if gray_img is None or gray_img.size == 0:
@@ -744,15 +746,25 @@ class WaveAnalyzer:
         entropy = float(-np.sum(hist256 * np.log2(hist256 + 1e-9)))
         lbp_mean = float(np.mean(codes)) / 255.0
         lbp_std = float(np.std(codes)) / 255.0
+        roughness = float(1.0 - dominant_ratio)
+
+        # Compound metrics for synth control.
+        # Normalize entropy to [0, 1] range (entropy max ~8 bits).
+        entropy_norm = entropy / 8.0
+        roughness_entropy_ratio = roughness / (entropy_norm + 1e-9)
+        rough_entr_avg = (roughness + entropy_norm) / 2.0
+        uniform_rough_entr = uniform_ratio / (rough_entr_avg + 1e-9)
 
         return {
             "lbp_mean": lbp_mean,
             "lbp_std": lbp_std,
             "lbp_entropy": entropy,
             "lbp_uniform_ratio": uniform_ratio,
-            "lbp_roughness": float(1.0 - dominant_ratio),
+            "lbp_roughness": roughness,
             "lbp_dominant_code": dominant_code,
             "lbp_dominant_ratio": dominant_ratio,
+            "lbp_roughness_entropy": roughness_entropy_ratio,
+            "lbp_uniform_rough_entr": uniform_rough_entr,
             "lbp_histogram_16": [float(v) for v in hist16],
         }
 
@@ -1628,6 +1640,8 @@ class WaveAnalyzer:
                 "lbp_roughness": 0.0,
                 "lbp_dominant_code": 0,
                 "lbp_dominant_ratio": 0.0,
+                "lbp_roughness_entropy": 0.0,
+                "lbp_uniform_rough_entr": 0.0,
                 "lbp_histogram_16": [0.0] * 16,
             }
             timers["lbp_ms"] = 0.0

@@ -509,7 +509,7 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
 
 
 def draw_lbp_overlay(frame, lbp_data):
-    """LBP overlay with aggregate gauges and compact grouped histogram."""
+    """LBP overlay with aggregate gauges and compound metrics."""
     lbp = lbp_data or {}
     if not lbp:
         return frame
@@ -517,24 +517,23 @@ def draw_lbp_overlay(frame, lbp_data):
     out = frame.copy()
     h, w = out.shape[:2]
     scale = 0.8
-    panel_w = int(round(390 * scale))
-    panel_h = int(round(186 * scale))
-    # Center-bottom placement, 8 px lower than the former lower-left baseline.
+    panel_w = int(round(280 * scale))
+    panel_h = int(round(170 * scale))
+    # Center-bottom placement.
     x0 = (w - panel_w) // 2
     y0 = h - panel_h - 8
     draw_transparent_rect(out, x0, y0, panel_w, panel_h, alpha=0.58)
-    cv2.putText(out, "LBP histogram (16 bins)", (x0 + 6, y0 + 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (230, 230, 230), 1, cv2.LINE_AA)
+    cv2.putText(out, "LBP texture measures", (x0 + 6, y0 + 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (230, 230, 230), 1, cv2.LINE_AA)
 
-    # Aggregate bars
+    # Primary aggregate bars
     roughness = float(lbp.get("lbp_roughness", 0.0))
     entropy = float(lbp.get("lbp_entropy", 0.0))
     uniform = float(lbp.get("lbp_uniform_ratio", 0.0))
     agg_x = x0 + 8
     agg_y = y0 + 24
     agg_w = panel_w - 16
-    # 60% of previous horizontal bar thickness (10 -> 6)
     agg_h = 6
-    agg_gap = 12
+    agg_gap = 10
     for label, val, col in [
         ("roughness", roughness, (200, 120, 50)),
         ("entropy", min(entropy / 8.0, 1.0), (170, 90, 200)),
@@ -547,34 +546,24 @@ def draw_lbp_overlay(frame, lbp_data):
         cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.30, (208, 208, 208), 1, cv2.LINE_AA)
         agg_y += agg_h + agg_gap
 
-    # Bottom histogram with 16 grouped bins.
-    hist = lbp.get("lbp_histogram_16", [0.0] * 16)
-    hist_vals = [float(v) for v in hist]
-    bin_count = max(1, len(hist_vals))
-    hist_max = max(max(hist_vals), 1e-9)
+    # Compound measures header
+    agg_y += 2
+    cv2.putText(out, "Compound measures", (agg_x, agg_y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.32, (210, 210, 130), 1, cv2.LINE_AA)
+    agg_y += 16
 
-    hist_x0 = x0 + 8
-    hist_y0 = y0 + 82
-    hist_h = 54
-    hist_gap = 2
-    bin_w = max(2, int((panel_w - 16 - hist_gap * max(0, bin_count - 1)) / bin_count))
-    cv2.putText(out, "grouped codes", (hist_x0, hist_y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.30, (185, 185, 185), 1, cv2.LINE_AA)
-
-    for idx, val in enumerate(hist_vals):
-        x = hist_x0 + idx * (bin_w + hist_gap)
-        hpx = int(round((val / hist_max) * hist_h))
-        cv2.rectangle(out, (x, hist_y0), (x + bin_w, hist_y0 + hist_h), (70, 70, 70), 1)
-        if hpx > 0:
-            cv2.rectangle(out, (x, hist_y0 + hist_h - hpx), (x + bin_w, hist_y0 + hist_h), (150, 150, 210), -1)
-
-    # Label key positions so bin meaning is clear.
-    label_y = hist_y0 + hist_h + 12
-    b1_x = hist_x0
-    b9_x = hist_x0 + 7 * (bin_w + hist_gap)
-    b16_x = hist_x0 + 15 * (bin_w + hist_gap)
-    cv2.putText(out, "1", (b1_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
-    cv2.putText(out, "8", (b9_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
-    cv2.putText(out, "16", (b16_x - 6, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
+    # Compound metric bars
+    rough_entr = float(lbp.get("lbp_roughness_entropy", 0.0))
+    unif_rough_entr = float(lbp.get("lbp_uniform_rough_entr", 0.0))
+    for label, val, col in [
+        ("Rough/Entr", min(rough_entr / 2.0, 1.0), (180, 140, 60)),
+        ("Unif/RoughEntr", min(unif_rough_entr / 1.5, 1.0), (100, 190, 180)),
+    ]:
+        filled = max(0, int(round(val * agg_w)))
+        cv2.rectangle(out, (agg_x, agg_y), (agg_x + agg_w, agg_y + agg_h), (72, 72, 72), 1)
+        if filled > 0:
+            cv2.rectangle(out, (agg_x, agg_y), (agg_x + filled, agg_y + agg_h), col, -1)
+        cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (200, 200, 200), 1, cv2.LINE_AA)
+        agg_y += agg_h + agg_gap
 
     return out
 

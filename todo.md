@@ -7,12 +7,13 @@
   - is the speed shown with arrow length?
 
 * Test and verify flow direction in several videos
+  - seems like only the faster is valid?
 * Testy and verify LBP in several videos
-  - bin 18 seems to always have most?
-  - periodic: bin 1, 9, and 18 heavy?
-  - remove text left as we see it on the bars
 
-* https://en.wikipedia.org/wiki/Histogram_of_oriented_gradients
+* Compound:
+  Roughness/Entropy
+  Uniform/RoughEntr
+
 
 * Slomo mode 4 frames pr sec, update temporal analysis
 
