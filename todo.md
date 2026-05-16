@@ -1,5 +1,7 @@
 
-
+* Test contour method across all videos, 
+  - we wante contours detected where we can visually see them in the image
+  - some videos, like Nidelv_2025_05_2.mp4 would not detect any contours
 
 
 * What is act and speed of the flow analyses, do they both show in the arrows

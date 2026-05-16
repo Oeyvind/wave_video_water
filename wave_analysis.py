@@ -100,6 +100,9 @@ class WaveAnalyzer:
             "quadrants": {},
         }
         self.wl_use_median = True
+        # Fixed-length median pre-filter + 2 Hz IIR lowpass for wavelength jitter removal.
+        self._wl_history = deque(maxlen=7)
+        self._wl_lp_state = None  # IIR lowpass state (None = uninitialised)
         self.prev_pyramid_bands = None
         self.pyramid_temporal_activity = 0.0
         self.pyramid_temporal_band_activity = [0.0] * self.PYRAMID_BAND_COUNT
@@ -123,6 +126,14 @@ class WaveAnalyzer:
             "slow_speed_norm": 0.0,
             "slow_direction_deg": 0.0,
             "slow_coherence": 0.0,
+            "fast_direction_quality": 0.0,
+            "slow_direction_quality": 0.0,
+            "direction_quality": 0.0,
+            "direction_source_label": "fast",
+            "adaptive_direction_deg": 0.0,
+            "adaptive_speed_norm": 0.0,
+            "adaptive_coherence": 0.0,
+            "adaptive_activity": 0.0,
             "directional_source": "fast",
             "directional_target_deg": 225.0,
             "directional_global": {},
@@ -135,9 +146,11 @@ class WaveAnalyzer:
         }
         # Multi-scale flow: slow scale compares frames flow_slow_interval apart.
         self.prev_flow_gray_slow = None
-        self.flow_slow_interval = 8
-        self._flow_interval_smooth = 8.0   # EMA-smoothed float target for adaptive interval
+        self.flow_slow_interval = 4
+        self._flow_interval_smooth = 4.0   # EMA-smoothed float target for adaptive interval
         self.enable_auto_flow_update_interval = True
+        # Axial mode: fold direction to 0-180° (treats back-and-forth as same axis).
+        self.flow_axial_mode = False
         self._flow_update_interval_smooth = 1.0
         self.flow_update_interval_min = 1
         self.flow_update_interval_max = 6
@@ -549,12 +562,19 @@ class WaveAnalyzer:
         else:
             thresh = preprocess_display.copy()
         edges = cv2.Canny(blur, 40, 120)
+        # Always compute Otsu binary — captures broad bright blobs (e.g. foam crests)
+        # that have gradual gradients and are invisible to Canny.
+        _, thresh_otsu_c = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         thresh = cv2.bitwise_and(thresh, thresh, mask=mask)
+        thresh_otsu_c = cv2.bitwise_and(thresh_otsu_c, thresh_otsu_c, mask=mask)
         edges = cv2.bitwise_and(edges, edges, mask=mask)
+        edges_dilated = cv2.dilate(edges, np.ones((2, 2), np.uint8), iterations=1)
+        # Combined binary: Canny edges trace fine wave texture; Otsu covers broad bright shapes.
+        contour_binary = cv2.bitwise_or(edges_dilated, thresh_otsu_c)
 
         self.last_threshold = thresh
         self.last_edges = edges
-        return mask, roi_gray, blur, thresh, edges, preprocess_display, stage_times
+        return mask, roi_gray, blur, thresh, edges, contour_binary, preprocess_display, stage_times
 
     def _analyze_contours(self, thresh, mask):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -751,7 +771,8 @@ class WaveAnalyzer:
         # Compound metrics for synth control.
         # Normalize entropy to [0, 1] range (entropy max ~8 bits).
         entropy_norm = entropy / 8.0
-        roughness_entropy_ratio = roughness / (entropy_norm + 1e-9)
+        # Signed difference: +1 = roughness dominates, -1 = entropy dominates.
+        roughness_entropy_ratio = roughness - entropy_norm
         rough_entr_avg = (roughness + entropy_norm) / 2.0
         uniform_rough_entr = uniform_ratio / (rough_entr_avg + 1e-9)
 
@@ -1204,26 +1225,26 @@ class WaveAnalyzer:
         scale_centroid: [0, 1]  0=fine  1=extra-coarse  (from pyramid analysis)
         wavelength_px:  pixels or None
         """
-        # Centroid maps 0→4 frames, 1→20 frames (slightly faster slow-flow updates).
-        interval_from_centroid = 4.0 + scale_centroid * 16.0
+        # Centroid maps 0→2 frames, 1→10 frames (doubled rate vs. previous).
+        interval_from_centroid = 2.0 + scale_centroid * 8.0
 
         if wavelength_px is not None and wavelength_px > 0:
-            # Log-map: 10 px→4 frames, 300 px→20 frames
+            # Log-map: 10 px→2 frames, 300 px→10 frames
             wl_norm = float(np.clip(
                 np.log(max(float(wavelength_px), 1.0) / 10.0) / np.log(300.0 / 10.0),
                 0.0, 1.0
             ))
-            interval_from_wl = 4.0 + wl_norm * 16.0
+            interval_from_wl = 2.0 + wl_norm * 8.0
             # Blend: wavelength contributes more when it's in the confident long range
             wl_weight = wl_norm * 0.6
             target = (1.0 - wl_weight) * interval_from_centroid + wl_weight * interval_from_wl
         else:
             target = interval_from_centroid
 
-        target = float(np.clip(target, 2.0, 24.0))
+        target = float(np.clip(target, 1.0, 12.0))
         # Slow EMA (~60-frame time constant) to prevent abrupt interval jumps
         self._flow_interval_smooth += 0.016 * (target - self._flow_interval_smooth)
-        self.flow_slow_interval = max(2, min(24, int(round(self._flow_interval_smooth))))
+        self.flow_slow_interval = max(1, min(12, int(round(self._flow_interval_smooth))))
 
     def _adapt_flow_update_interval(self, fast_metrics, temporal_centroid_hz=0.0):
         """Adapt fast-flow update interval to scene dynamics and temporal content."""
@@ -1467,24 +1488,36 @@ class WaveAnalyzer:
         slow_m = self._last_slow_metrics
 
         # --- Combine fast and slow metrics ---
-        if slow_m is not None and slow_m["activity"] > 0.0:
-            fa = fast_m["activity"]
-            sa = slow_m["activity"]
-            total = fa + sa + 1e-6
-            # Circular weighted mean for direction.
+        # Quality = activity × coherence. The slow scale is only admitted to the
+        # direction blend when its coherence is ≥ 0.2; below that the slow flow
+        # is considered too incoherent to trust (common in turbulent/pool scenes).
+        fq = fast_m["activity"] * fast_m["coherence"]
+        slow_usable = (
+            slow_m is not None
+            and slow_m["activity"] > 0.0
+            and slow_m["coherence"] >= 0.2
+        )
+        sq = (slow_m["activity"] * slow_m["coherence"]) if slow_usable else 0.0
+        total_q = fq + sq + 1e-9
+
+        if slow_usable and sq > 0.0:
+            # Quality-weighted circular mean for direction.
             fd = np.radians(fast_m["direction_deg"])
             sd = np.radians(slow_m["direction_deg"])
-            dx = fa * np.cos(fd) + sa * np.cos(sd)
-            dy = fa * np.sin(fd) + sa * np.sin(sd)
+            dx = fq * np.cos(fd) + sq * np.cos(sd)
+            dy = fq * np.sin(fd) + sq * np.sin(sd)
             direction = float((np.degrees(np.arctan2(dy, dx)) + 360.0) % 360.0)
-            speed_norm = _clip01((fa * fast_m["speed_norm"] + sa * slow_m["speed_norm"]) / total)
-            coherence = _clip01((fa * fast_m["coherence"] + sa * slow_m["coherence"]) / total)
-            activity = _clip01(max(fa, sa))
+            speed_norm = _clip01((fq * fast_m["speed_norm"] + sq * slow_m["speed_norm"]) / total_q)
+            coherence = _clip01((fq * fast_m["coherence"] + sq * slow_m["coherence"]) / total_q)
+            activity = _clip01(max(fast_m["activity"], slow_m["activity"]))
+            src_label = "F+S"
         else:
             direction = fast_m["direction_deg"]
             speed_norm = fast_m["speed_norm"]
             coherence = fast_m["coherence"]
             activity = fast_m["activity"]
+            sq = 0.0
+            src_label = "fast"
 
         self.last_direction = direction
         flow_data.update({
@@ -1500,7 +1533,20 @@ class WaveAnalyzer:
             "slow_speed_norm": slow_m["speed_norm"] if slow_m else 0.0,
             "slow_direction_deg": slow_m["direction_deg"] if slow_m else 0.0,
             "slow_coherence": slow_m["coherence"] if slow_m else 0.0,
+            "fast_direction_quality": float(fq),
+            "slow_direction_quality": float(sq),
+            "direction_quality": float(fq + sq),
+            "direction_source_label": src_label,
+            "adaptive_direction_deg": direction,
+            "adaptive_speed_norm": speed_norm,
+            "adaptive_coherence": coherence,
+            "adaptive_activity": activity,
         })
+
+        if self.flow_axial_mode:
+            for _akey in ("fast_direction_deg", "slow_direction_deg", "direction_deg"):
+                if _akey in flow_data:
+                    flow_data[_akey] = float(flow_data[_akey]) % 180.0
 
         if self.enable_flow_directional_scoring:
             primary_flow = self.last_flow
@@ -1600,7 +1646,7 @@ class WaveAnalyzer:
     def analyze(self, gray):
         timers = {}
         t0 = perf_counter()
-        mask, roi_gray, blur, thresh, edges, preprocess_display, preprocess_stage_times = self._mask_and_preprocess(gray)
+        mask, roi_gray, blur, thresh, edges, contour_binary, preprocess_display, preprocess_stage_times = self._mask_and_preprocess(gray)
         timers["preprocess_ms"] = (perf_counter() - t0) * 1000.0
         timers.update(preprocess_stage_times)
 
@@ -1609,8 +1655,11 @@ class WaveAnalyzer:
         self.frame_index += 1
         run_full = self.frame_index % self.frame_skip == 0
 
+        # Use combined binary (Canny + Otsu) as contour source by default.
+        # When the explicit threshold filter is on, use the Otsu binary image instead.
+        contour_source = thresh if self.enable_threshold_filter else contour_binary
         t1 = perf_counter()
-        contour_data = self._analyze_contours(thresh, mask) if run_full else {
+        contour_data = self._analyze_contours(contour_source, mask) if run_full else {
             "common": self.smoothed["bump_size_common"],
             "median": self.smoothed["bump_size_common"],
             "spread": self.smoothed["bump_size_spread"],
@@ -1715,6 +1764,19 @@ class WaveAnalyzer:
                 use_median=self.wl_use_median,
             )
         wavelength_data["quadrants"] = quadrant_wavelengths
+
+        # Median pre-filter (length 7) then 2 Hz IIR lowpass to remove jitter.
+        _raw_wl = wavelength_data.get("wavelength_px")
+        if _raw_wl is not None:
+            self._wl_history.append(float(_raw_wl))
+        if self._wl_history:
+            _median_wl = float(np.median(list(self._wl_history)))
+            _lp_alpha = float(1.0 - np.exp(-2.0 * np.pi * 2.0 / max(self.fps, 1.0)))
+            if self._wl_lp_state is None:
+                self._wl_lp_state = _median_wl
+            else:
+                self._wl_lp_state = _lp_alpha * _median_wl + (1.0 - _lp_alpha) * self._wl_lp_state
+            wavelength_data["wavelength_px"] = self._wl_lp_state
 
         self.last_wavelength = wavelength_data["wavelength_px"]
         self.last_wavelength_metrics = dict(wavelength_data)

@@ -24,3 +24,16 @@ def send_fused_wave_data(analysis):
     # Optional debug channels for inspectability in downstream tools.
     client.send_message("/wave/raw/frequency_hz", float(raw["wave_frequency_hz"]))
     client.send_message("/wave/raw/activity", float(raw["activity"]))
+
+    # Per-scale and adaptive flow direction channels.
+    flow = analysis.get("flow_data", {})
+    client.send_message("/wave/flow/fast_direction_deg", float(flow.get("fast_direction_deg", 0.0)))
+    client.send_message("/wave/flow/fast_activity", float(flow.get("fast_activity", 0.0)))
+    client.send_message("/wave/flow/fast_coherence", float(flow.get("fast_coherence", 0.0)))
+    client.send_message("/wave/flow/slow_direction_deg", float(flow.get("slow_direction_deg", 0.0)))
+    client.send_message("/wave/flow/slow_activity", float(flow.get("slow_activity", 0.0)))
+    client.send_message("/wave/flow/slow_coherence", float(flow.get("slow_coherence", 0.0)))
+    client.send_message("/wave/flow/adaptive_direction_deg", float(flow.get("adaptive_direction_deg", 0.0)))
+    client.send_message("/wave/flow/adaptive_activity", float(flow.get("adaptive_activity", 0.0)))
+    client.send_message("/wave/flow/adaptive_coherence", float(flow.get("adaptive_coherence", 0.0)))
+    client.send_message("/wave/flow/direction_quality", float(flow.get("direction_quality", 0.0)))

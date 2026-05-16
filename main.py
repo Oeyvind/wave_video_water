@@ -232,15 +232,7 @@ def draw_status_hud(
         f"bump ctr(size) {smooth['bump_size_centroid'] * 100.0:.2f}% shape {smooth['bump_shape_roundness']:.2f}",
         f"act {smooth['activity']:.2f} conf {smooth['confidence']:.2f}",
     ]
-    fd = flow_data or {}
-    lbp = lbp_data or {}
-    signal_lines += [
-        f"flow fast: act {fd.get('fast_activity', 0.0):.2f}  spd {fd.get('fast_speed_norm', 0.0):.2f}  dir {fd.get('fast_direction_deg', 0.0):.0f}  coh {fd.get('fast_coherence', 0.0):.2f}",
-        f"flow slow: act {fd.get('slow_activity', 0.0):.2f}  spd {fd.get('slow_speed_norm', 0.0):.2f}  dir {fd.get('slow_direction_deg', 0.0):.0f}  coh {fd.get('slow_coherence', 0.0):.2f}",
-        f"flow dir tgt {fd.get('directional_target_deg', 225.0):.0f}deg ({fd.get('directional_source', 'fast')})  support {fd.get('directional_global', {}).get('support', 0.0):.2f}  hit {fd.get('directional_global', {}).get('hit_ratio', 0.0):.2f}",
-        f"flow best: quad {fd.get('directional_best_quadrant', '-')} {fd.get('directional_best_quadrant_support', 0.0):.2f}  stripe {fd.get('directional_best_stripe', '-')} {fd.get('directional_best_stripe_support', 0.0):.2f}",
-        f"lbp: rough {lbp.get('lbp_roughness', 0.0):.2f}  uniform {lbp.get('lbp_uniform_ratio', 0.0):.2f}  entr {lbp.get('lbp_entropy', 0.0):.2f}",
-    ]
+
 
     _, signal_h = measure_text_block(signal_lines, font_scale=0.52, thickness=1, pad=8, line_gap=6)
     signal_y = max(10, (hud.shape[0] - signal_h) // 2)
@@ -261,7 +253,7 @@ def draw_status_hud(
         f"effective fps: {perf_stats['effective_fps']:.2f}",
         f"processing fps: {perf_stats['processing_fps']:.2f}",
         f"playback ratio: {perf_stats['playback_ratio_pct']:.1f}%",
-        f"quality: {quality_idx + 1}",
+        f"quality: {quality_idx + 1}  disp 1/{switches.get('display_skip', 1)}",
         f"flow fast: every {switches['flow_interval']} frame(s) ({'auto' if switches['flow_update_auto'] else 'manual'})",
         f"flow slow: every {switches['flow_slow_interval']} frame(s)",
     ]
@@ -304,7 +296,8 @@ def draw_status_hud(
         f"[S] pyramid overlay: {'on' if switches['spectrum_overlay'] else 'off'}",
         f"[W] texture overlay: {'on' if switches['texture_overlay'] else 'off'}",
         f"[Y] cpu profile: {'on' if show_cpu_profile else 'off'}",
-        f"[V] flow overlay: {'on' if switches['flow_overlay'] else 'off'}",
+        f"[V] flow: {switches['flow_overlay']}",
+        f"[X] axial flow: {'on' if switches['flow_axial_mode'] else 'off'}",
         f"[J] LBP analysis: {'on' if switches['lbp_analysis'] else 'off'}",
         f"[F] flow detail: {switches['flow_detail_mode']}",
         f"[I] fast interval auto: {'on' if switches['flow_update_auto'] else 'off'}",
@@ -437,8 +430,17 @@ def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10,
     cv2.putText(frame, label, (x0 - 2, y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (225, 225, 225), 1, cv2.LINE_AA)
 
 
+def _draw_axial_arrow(img, center, dx, dy, color, thickness, tip_length):
+    """Draw a double-headed axis line through center with arrowheads at both ends."""
+    p0 = (center[0] - dx, center[1] - dy)
+    p1 = (center[0] + dx, center[1] + dy)
+    cv2.arrowedLine(img, p0, p1, color, thickness, tipLength=tip_length)
+    cv2.arrowedLine(img, p1, p0, color, thickness, tipLength=tip_length)
+
+
 def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_color=(120, 220, 255),
-                              circle_color=(220, 220, 220), global_rate_hz=None, rate_side=None):
+                              circle_color=(220, 220, 220), global_rate_hz=None, rate_side=None,
+                              axial=False):
     if flow is None:
         return frame
 
@@ -466,9 +468,13 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
         if has_motion:
             q_color = arrow_color
             arrow_len = int(np.clip(16 + strength * 8.0, 16, 44))
-            dx = int(np.cos(np.radians(direction_deg)) * arrow_len)
-            dy = int(np.sin(np.radians(direction_deg)) * arrow_len)
-            cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), q_color, 2, tipLength=0.22)
+            _dir = direction_deg % 180.0 if axial else direction_deg
+            dx = int(np.cos(np.radians(_dir)) * arrow_len)
+            dy = int(np.sin(np.radians(_dir)) * arrow_len)
+            if axial:
+                _draw_axial_arrow(out, shifted_center, dx, dy, q_color, 2, 0.22)
+            else:
+                cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), q_color, 2, tipLength=0.22)
 
         cv2.putText(out, label, (shifted_center[0] - 12, shifted_center[1] - radius - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (235, 235, 235), 1, cv2.LINE_AA)
 
@@ -480,9 +486,13 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
     if g_has_motion:
         g_color = global_color
         g_len = int(np.clip(20 + g_strength * 10.0, 20, 56))
-        g_dx = int(np.cos(np.radians(g_direction_deg)) * g_len)
-        g_dy = int(np.sin(np.radians(g_direction_deg)) * g_len)
-        cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), g_color, 3, tipLength=0.22)
+        _gdir = g_direction_deg % 180.0 if axial else g_direction_deg
+        g_dx = int(np.cos(np.radians(_gdir)) * g_len)
+        g_dy = int(np.sin(np.radians(_gdir)) * g_len)
+        if axial:
+            _draw_axial_arrow(out, g_center, g_dx, g_dy, g_color, 3, 0.22)
+        else:
+            cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), g_color, 3, tipLength=0.22)
 
     if global_rate_hz is not None and rate_side in ("left", "right"):
         rate_text = f"{float(global_rate_hz):.1f}Hz"
@@ -505,6 +515,45 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
 
     cv2.putText(out, "G", (g_center[0] - 7, g_center[1] - g_radius - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (245, 245, 245), 1, cv2.LINE_AA)
 
+    return out
+
+
+def draw_adaptive_flow_arrow(frame, flow_data, axial=False):
+    """Draw a single adaptive-direction arrow at the frame centre.
+
+    Uses the quality-weighted adaptive direction from flow_data.  Drawn on a
+    dedicated ring outside the fast/slow G circles so it is clearly distinct.
+    Arrow length scales with direction_quality so it shrinks when unreliable.
+    """
+    if flow_data is None:
+        return frame
+    direction_deg = float(flow_data.get("adaptive_direction_deg", 0.0))
+    quality = float(flow_data.get("direction_quality", 0.0))
+    activity = float(flow_data.get("adaptive_activity", 0.0))
+    if activity < 0.01:
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+    cx, cy = w // 2, h // 2
+    center = (cx, cy)
+    a_color = (0, 220, 110)   # lime-green, visually distinct from fast (blue) and slow (dark blue)
+    a_radius = 56             # slightly larger ring than G (42) to frame the arrow
+    cv2.circle(out, center, a_radius, a_color, 1)
+
+    # Arrow length: fixed base + quality-scaled extension, capped sensibly.
+    arrow_len = int(np.clip(20 + quality * 60.0, 20, 70))
+    _dir = direction_deg % 180.0 if axial else direction_deg
+    dx = int(np.cos(np.radians(_dir)) * arrow_len)
+    dy = int(np.sin(np.radians(_dir)) * arrow_len)
+    if axial:
+        _draw_axial_arrow(out, center, dx, dy, a_color, 3, 0.20)
+    else:
+        cv2.arrowedLine(out, center, (cx + dx, cy + dy), a_color, 3, tipLength=0.20)
+
+    src = flow_data.get("direction_source_label", "")
+    cv2.putText(out, f"A:{src}", (cx - 18, cy - a_radius - 6),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.42, a_color, 1, cv2.LINE_AA)
     return out
 
 
@@ -555,13 +604,17 @@ def draw_lbp_overlay(frame, lbp_data):
     rough_entr = float(lbp.get("lbp_roughness_entropy", 0.0))
     unif_rough_entr = float(lbp.get("lbp_uniform_rough_entr", 0.0))
     for label, val, col in [
-        ("Rough/Entr", min(rough_entr / 2.0, 1.0), (180, 140, 60)),
+        ("Rough-Entr", float(np.clip((rough_entr * 5.0 + 1.0) / 2.0, 0.0, 1.0)), (180, 140, 60)),
         ("Unif/RoughEntr", min(unif_rough_entr / 1.5, 1.0), (100, 190, 180)),
     ]:
         filled = max(0, int(round(val * agg_w)))
         cv2.rectangle(out, (agg_x, agg_y), (agg_x + agg_w, agg_y + agg_h), (72, 72, 72), 1)
         if filled > 0:
             cv2.rectangle(out, (agg_x, agg_y), (agg_x + filled, agg_y + agg_h), col, -1)
+        if label == "Rough-Entr":
+            # Center tick marks the balanced (roughness == entropy) point.
+            tick_x = agg_x + agg_w // 2
+            cv2.line(out, (tick_x, agg_y), (tick_x, agg_y + agg_h), (200, 200, 200), 1)
         cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (200, 200, 200), 1, cv2.LINE_AA)
         agg_y += agg_h + agg_gap
 
@@ -751,6 +804,7 @@ def make_display_frame(
     contour_overlay,
     flow_overlay,
     spectrum_overlay,
+    axial_flow=False,
 ):
     if mode_name == "filtered":
         # Show pre-threshold filtered signal in filtered mode.
@@ -769,36 +823,42 @@ def make_display_frame(
         # U adjusts straight-line minimum length threshold.
         blob_contours = analysis["contours"]
         if blob_contours:
-            cv2.drawContours(out, blob_contours, -1, (30, 250, 70), 2)
+            cv2.drawContours(out, blob_contours, -1, (30, 250, 70), 1)
             # Highlight the largest blob-like contour in red
             largest_idx = int(np.argmax([cv2.contourArea(c) for c in blob_contours]))
-            cv2.drawContours(out, blob_contours, largest_idx, (0, 0, 255), 2)
+            cv2.drawContours(out, blob_contours, largest_idx, (0, 0, 255), 1)
 
         straight_line_contours = analysis.get("static_contours", [])
         if straight_line_contours:
-            cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 2)
+            cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 1)
 
-    if flow_overlay:
+    if flow_overlay != "off":
         fast_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_update_interval))
         slow_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_slow_interval))
         fast_arrow_color = _rate_hz_to_color(fast_rate_hz)
         slow_arrow_color = _rate_hz_to_color(slow_rate_hz)
 
         # Fast flow: color keyed by fast analysis rate
-        out = draw_flow_overlay(out, analyzer.last_flow, color=(30, 180, 255), disp_scale=2.0)
+        if flow_overlay == "full":
+            out = draw_flow_overlay(out, analyzer.last_flow, color=(30, 180, 255), disp_scale=2.0)
         out = draw_quadrant_flow_arrows(out, analyzer.last_flow,
                                         arrow_color=fast_arrow_color, global_color=fast_arrow_color,
                                         circle_color=(200, 200, 200),
                                         global_rate_hz=fast_rate_hz, rate_side="right",
+                                        axial=axial_flow,
                                         )
         # Slow flow: color keyed by slow analysis rate
         slow_disp_scale = 2.0 / max(1, analyzer.flow_slow_interval)
-        out = draw_flow_overlay(out, analyzer.last_flow_slow, color=(30, 100, 255), disp_scale=slow_disp_scale)
+        if flow_overlay == "full":
+            out = draw_flow_overlay(out, analyzer.last_flow_slow, color=(30, 100, 255), disp_scale=slow_disp_scale)
         out = draw_quadrant_flow_arrows(out, analyzer.last_flow_slow,
                                         arrow_color=slow_arrow_color, global_color=slow_arrow_color,
                                         circle_color=(160, 160, 160),
                                         global_rate_hz=slow_rate_hz, rate_side="left",
+                                        axial=axial_flow,
                                         )
+        # Adaptive arrow: quality-weighted blend of fast+slow, drawn on its own ring.
+        out = draw_adaptive_flow_arrow(out, analysis.get("flow_data"), axial=axial_flow)
 
     if spectrum_overlay:
         out = draw_pyramid_texture_bars(out, analysis.get("pyramid_data"), analysis.get("wavelength_data"))
@@ -972,9 +1032,13 @@ def main():
         else:
             analyzer.set_flow_quality(**flow_quality_presets_lowest[idx])
 
-    quality_idx = 2
+    quality_idx = 0
     analyzer.set_quality(**quality_presets[quality_idx])
     apply_flow_quality_for_current_mode(quality_idx)
+    # Display rendering every N analysis frames — reduces overlay CPU at lower quality levels.
+    display_skip_intervals = [1, 2, 3, 4]
+    _display_frame_counter = 0
+    _last_display = None
     profile_window_seconds = 2.0
     profile_update_hz = 2.0
     profile_update_interval_s = 1.0 / profile_update_hz
@@ -993,13 +1057,14 @@ def main():
 
     mode_idx = 0
     step = False
-    show_flow_overlay = True
+    flow_mode = "arrows"  # "off" | "arrows" | "full"
+    flow_axial_mode = False
     show_contour_overlay = False
     show_threshold_overlay = False
     show_texture_overlay = True
     analyzer.enable_threshold_filter = show_threshold_overlay
     show_spectrum_overlay = True
-    show_cpu_profile = True
+    show_cpu_profile = False
     temporal_modes = [
         {"label": "off", "enabled": False, "seconds": None, "output": "change"},
         {"label": "lp 0.5s", "enabled": True, "seconds": 0.5, "output": "lowpass"},
@@ -1173,7 +1238,9 @@ def main():
             "flow_detail_mode": flow_detail_mode,
             "temporal_diff_filter": analyzer.enable_temporal_difference_filter,
             "temporal_diff_polarity": analyzer.temporal_diff_polarity,
-            "flow_overlay": show_flow_overlay,
+            "flow_overlay": flow_mode,
+            "display_skip": display_skip_intervals[quality_idx],
+            "flow_axial_mode": flow_axial_mode,
             "contour_overlay": show_contour_overlay,
             "threshold_overlay": show_threshold_overlay,
             "spectrum_overlay": show_spectrum_overlay,
@@ -1201,51 +1268,57 @@ def main():
             next_status_panel_update_t = cap_t1 + status_panel_update_interval_s
 
         mode_name = DISPLAY_MODES[mode_idx]
+        _display_frame_counter = (_display_frame_counter + 1) % display_skip_intervals[quality_idx]
+        _do_render = (_display_frame_counter == 0) or (_last_display is None)
         render_t0 = time.perf_counter()
-        display = make_display_frame(
-            frame,
-            analysis,
-            mode_name,
-            analyzer,
-            show_threshold_overlay,
-            show_contour_overlay,
-            show_flow_overlay,
-            show_spectrum_overlay,
-        )
-        display = draw_status_hud(
-            display,
-            mode_name,
-            current_quality_idx,
-            editing_mask,
-            pending_corners,
-            current_signal_smoothed,
-            current_perf_stats,
-            current_switches,
-            current_profile_stats,
-            show_cpu_profile,
-            flow_data=analysis.get("flow_data") if analysis else None,
-            pyramid_data=analysis.get("pyramid_data") if analysis else None,
-            wavelength_data=analysis.get("wavelength_data") if analysis else None,
-            lbp_data=analysis.get("lbp_data") if analysis else None,
-        )
+        if _do_render:
+            display = make_display_frame(
+                frame,
+                analysis,
+                mode_name,
+                analyzer,
+                show_threshold_overlay,
+                show_contour_overlay,
+                flow_mode,
+                show_spectrum_overlay,
+                axial_flow=flow_axial_mode,
+            )
+            display = draw_status_hud(
+                display,
+                mode_name,
+                current_quality_idx,
+                editing_mask,
+                pending_corners,
+                current_signal_smoothed,
+                current_perf_stats,
+                current_switches,
+                current_profile_stats,
+                show_cpu_profile,
+                flow_data=analysis.get("flow_data") if analysis else None,
+                pyramid_data=analysis.get("pyramid_data") if analysis else None,
+                wavelength_data=analysis.get("wavelength_data") if analysis else None,
+                lbp_data=analysis.get("lbp_data") if analysis else None,
+            )
 
-        if show_texture_overlay and analysis:
-            display = draw_lbp_overlay(display, analysis.get("lbp_data"))
+            if show_texture_overlay and analysis:
+                display = draw_lbp_overlay(display, analysis.get("lbp_data"))
 
-        if analyzer.show_mask and analyzer.mask_points:
-            pts = np.array(analyzer.mask_points, dtype=np.int32)
-            cv2.polylines(display, [pts], True, (255, 210, 80), 2)
-            for p in analyzer.mask_points:
-                cv2.circle(display, p, 4, (255, 210, 80), -1)
+            if analyzer.show_mask and analyzer.mask_points:
+                pts = np.array(analyzer.mask_points, dtype=np.int32)
+                cv2.polylines(display, [pts], True, (255, 210, 80), 2)
+                for p in analyzer.mask_points:
+                    cv2.circle(display, p, 4, (255, 210, 80), -1)
 
-        if editing_mask and corner_points:
-            for point in corner_points:
-                cv2.circle(display, point, 5, (20, 200, 250), -1)
+            if editing_mask and corner_points:
+                for point in corner_points:
+                    cv2.circle(display, point, 5, (20, 200, 250), -1)
+
+            _last_display = display
 
         render_t1 = time.perf_counter()
-        profile_windows["render_ms"].append((render_t1 - render_t0) * 1000.0)
+        profile_windows["render_ms"].append((render_t1 - render_t0) * 1000.0 if _do_render else 0.0)
 
-        cv2.imshow("Wave Analyzer", display)
+        cv2.imshow("Wave Analyzer", _last_display)
 
         if last_analysis is not None:
             osc_t0 = time.perf_counter()
@@ -1313,7 +1386,10 @@ def main():
         if key == ord("d"):
             mode_idx = (mode_idx + 1) % len(DISPLAY_MODES)
         if key == ord("v"):
-            show_flow_overlay = not show_flow_overlay
+            flow_mode = {"off": "arrows", "arrows": "full", "full": "off"}[flow_mode]
+        if key == ord("x"):
+            flow_axial_mode = not flow_axial_mode
+            analyzer.flow_axial_mode = flow_axial_mode
         if key == ord("w"):
             show_texture_overlay = not show_texture_overlay
         if key == ord("c"):
