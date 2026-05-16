@@ -71,7 +71,7 @@ class SweepRunner:
         
         # Pyramid centroid (0-1 scale from coarse to fine)
         pyramid_data = result.get("pyramid_data", {})
-        pyramid_centroid = pyramid_data.get("scale_centroid_0_1", 0.5)
+        pyramid_centroid = pyramid_data.get("scale_centroid", 0.5)
         
         # LBP roughness (entropy)
         lbp_data = result.get("lbp_data", {})

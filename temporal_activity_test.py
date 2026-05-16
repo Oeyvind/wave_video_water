@@ -56,7 +56,7 @@ def run_video(video_path, max_frames=500):
 
         q_level = {}
         for q in ("UL", "UR", "LL", "LR"):
-            qbands = np.asarray(qt.get(q, [0.0] * 5), dtype=np.float32)
+            qbands = np.asarray(qt.get(q, [0.0] * 3), dtype=np.float32)
             qmean = float(np.mean(qbands)) if qbands.size else 0.0
             q_level[q] = qmean
             quadrant_means[q].append(qmean)

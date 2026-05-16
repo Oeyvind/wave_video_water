@@ -1,20 +1,18 @@
 
 
-* Reduce from 5 bands to 3 bands pyramid
-  - yellow with some bleed, blue and purple
-  - would this significantly reduce cpu cost?
+
 
 * What is act and speed of the flow analyses, do they both show in the arrows
   - perhaps act could be shown as line thickness?
   - is the speed shown with arrow length?
 
-* Explain what the gabor and lbp analyses show
-
 * Test and verify flow direction in several videos
+* Testy and verify LBP in several videos
+  - bin 18 seems to always have most?
+  - periodic: bin 1, 9, and 18 heavy?
+  - remove text left as we see it on the bars
 
-* Optimize the pyramid analysis to fewer bands:
-  fine, mid, coarse
-  three first current bands are in the fine
+* https://en.wikipedia.org/wiki/Histogram_of_oriented_gradients
 
 * Slomo mode 4 frames pr sec, update temporal analysis
 

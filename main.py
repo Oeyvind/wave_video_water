@@ -221,7 +221,6 @@ def draw_status_hud(
     pyramid_data=None,
     wavelength_data=None,
     lbp_data=None,
-    gabor_data=None,
 ):
     hud = frame.copy()
     color = (235, 235, 235)
@@ -235,14 +234,12 @@ def draw_status_hud(
     ]
     fd = flow_data or {}
     lbp = lbp_data or {}
-    gabor = gabor_data or {}
     signal_lines += [
         f"flow fast: act {fd.get('fast_activity', 0.0):.2f}  spd {fd.get('fast_speed_norm', 0.0):.2f}  dir {fd.get('fast_direction_deg', 0.0):.0f}  coh {fd.get('fast_coherence', 0.0):.2f}",
         f"flow slow: act {fd.get('slow_activity', 0.0):.2f}  spd {fd.get('slow_speed_norm', 0.0):.2f}  dir {fd.get('slow_direction_deg', 0.0):.0f}  coh {fd.get('slow_coherence', 0.0):.2f}",
         f"flow dir tgt {fd.get('directional_target_deg', 225.0):.0f}deg ({fd.get('directional_source', 'fast')})  support {fd.get('directional_global', {}).get('support', 0.0):.2f}  hit {fd.get('directional_global', {}).get('hit_ratio', 0.0):.2f}",
         f"flow best: quad {fd.get('directional_best_quadrant', '-')} {fd.get('directional_best_quadrant_support', 0.0):.2f}  stripe {fd.get('directional_best_stripe', '-')} {fd.get('directional_best_stripe_support', 0.0):.2f}",
         f"lbp: rough {lbp.get('lbp_roughness', 0.0):.2f}  uniform {lbp.get('lbp_uniform_ratio', 0.0):.2f}  entr {lbp.get('lbp_entropy', 0.0):.2f}",
-        f"gabor: ori {gabor.get('dominant_orientation_deg', 0.0):.0f}deg  wl {gabor.get('dominant_wavelength_px', 0.0):.0f}px  aniso {gabor.get('gabor_anisotropy', 0.0):.2f}",
     ]
 
     _, signal_h = measure_text_block(signal_lines, font_scale=0.52, thickness=1, pad=8, line_gap=6)
@@ -281,7 +278,6 @@ def draw_status_hud(
         f"contours {profile_stats.get('contours_ms', 0.0):.2f} | {profile_stats.get('contours_pct', 0.0):.1f}%",
         f"pyramid  {profile_stats.get('pyramid_ms', 0.0):.2f} | {profile_stats.get('pyramid_pct', 0.0):.1f}%",
         f"lbp     {profile_stats.get('lbp_ms', 0.0):.2f} | {profile_stats.get('lbp_pct', 0.0):.1f}%",
-        f"gabor   {profile_stats.get('gabor_ms', 0.0):.2f} | {profile_stats.get('gabor_pct', 0.0):.1f}%",
         f"flow     {profile_stats.get('flow_ms', 0.0):.2f} | {profile_stats.get('flow_pct', 0.0):.1f}%",
         f"fusion   {profile_stats.get('fusion_ms', 0.0):.2f} | {profile_stats.get('fusion_pct', 0.0):.1f}%",
         f"render   {profile_stats.get('render_ms', 0.0):.2f} | {profile_stats.get('render_pct', 0.0):.1f}%",
@@ -306,10 +302,10 @@ def draw_status_hud(
         f"[C] contour overlay: {'on' if switches['contour_overlay'] else 'off'}",
         f"[U] line min len: {switches['contour_motion_threshold_label']}",
         f"[S] pyramid overlay: {'on' if switches['spectrum_overlay'] else 'off'}",
+        f"[W] texture overlay: {'on' if switches['texture_overlay'] else 'off'}",
         f"[Y] cpu profile: {'on' if show_cpu_profile else 'off'}",
         f"[V] flow overlay: {'on' if switches['flow_overlay'] else 'off'}",
         f"[J] LBP analysis: {'on' if switches['lbp_analysis'] else 'off'}",
-        f"[O] Gabor analysis: {'on' if switches['gabor_analysis'] else 'off'}",
         f"[F] flow detail: {switches['flow_detail_mode']}",
         f"[I] fast interval auto: {'on' if switches['flow_update_auto'] else 'off'}",
         f"[M] show mask: {'on' if switches['show_mask'] else 'off'}",
@@ -512,25 +508,94 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
     return out
 
 
-# Pyramid texture band colors: fine, mid-fine, mid-coarse, coarse, extra-coarse.
-# Ordered as orange -> yellow -> green -> blue -> purple.
+def draw_lbp_overlay(frame, lbp_data):
+    """LBP overlay with aggregate gauges and compact grouped histogram."""
+    lbp = lbp_data or {}
+    if not lbp:
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+    scale = 0.8
+    panel_w = int(round(390 * scale))
+    panel_h = int(round(186 * scale))
+    # Center-bottom placement, 8 px lower than the former lower-left baseline.
+    x0 = (w - panel_w) // 2
+    y0 = h - panel_h - 8
+    draw_transparent_rect(out, x0, y0, panel_w, panel_h, alpha=0.58)
+    cv2.putText(out, "LBP histogram (16 bins)", (x0 + 6, y0 + 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (230, 230, 230), 1, cv2.LINE_AA)
+
+    # Aggregate bars
+    roughness = float(lbp.get("lbp_roughness", 0.0))
+    entropy = float(lbp.get("lbp_entropy", 0.0))
+    uniform = float(lbp.get("lbp_uniform_ratio", 0.0))
+    agg_x = x0 + 8
+    agg_y = y0 + 24
+    agg_w = panel_w - 16
+    # 60% of previous horizontal bar thickness (10 -> 6)
+    agg_h = 6
+    agg_gap = 12
+    for label, val, col in [
+        ("roughness", roughness, (200, 120, 50)),
+        ("entropy", min(entropy / 8.0, 1.0), (170, 90, 200)),
+        ("uniform", uniform, (60, 170, 210)),
+    ]:
+        filled = max(0, int(round(val * agg_w)))
+        cv2.rectangle(out, (agg_x, agg_y), (agg_x + agg_w, agg_y + agg_h), (72, 72, 72), 1)
+        if filled > 0:
+            cv2.rectangle(out, (agg_x, agg_y), (agg_x + filled, agg_y + agg_h), col, -1)
+        cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.30, (208, 208, 208), 1, cv2.LINE_AA)
+        agg_y += agg_h + agg_gap
+
+    # Bottom histogram with 16 grouped bins.
+    hist = lbp.get("lbp_histogram_16", [0.0] * 16)
+    hist_vals = [float(v) for v in hist]
+    bin_count = max(1, len(hist_vals))
+    hist_max = max(max(hist_vals), 1e-9)
+
+    hist_x0 = x0 + 8
+    hist_y0 = y0 + 82
+    hist_h = 54
+    hist_gap = 2
+    bin_w = max(2, int((panel_w - 16 - hist_gap * max(0, bin_count - 1)) / bin_count))
+    cv2.putText(out, "grouped codes", (hist_x0, hist_y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.30, (185, 185, 185), 1, cv2.LINE_AA)
+
+    for idx, val in enumerate(hist_vals):
+        x = hist_x0 + idx * (bin_w + hist_gap)
+        hpx = int(round((val / hist_max) * hist_h))
+        cv2.rectangle(out, (x, hist_y0), (x + bin_w, hist_y0 + hist_h), (70, 70, 70), 1)
+        if hpx > 0:
+            cv2.rectangle(out, (x, hist_y0 + hist_h - hpx), (x + bin_w, hist_y0 + hist_h), (150, 150, 210), -1)
+
+    # Label key positions so bin meaning is clear.
+    label_y = hist_y0 + hist_h + 12
+    b1_x = hist_x0
+    b9_x = hist_x0 + 7 * (bin_w + hist_gap)
+    b16_x = hist_x0 + 15 * (bin_w + hist_gap)
+    cv2.putText(out, "1", (b1_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
+    cv2.putText(out, "8", (b9_x, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
+    cv2.putText(out, "16", (b16_x - 6, label_y), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (165, 165, 165), 1, cv2.LINE_AA)
+
+    return out
+
+
+# Pyramid texture band colors: yellow-wide, coarse, extra-coarse.
+# Ordered as yellow -> blue -> purple.
 _PYRAMID_BAND_COLORS = [
-    (0, 140, 255),
     (0, 220, 255),
-    (60, 200, 120),
     (255, 140, 80),
     (220, 60, 220),
 ]
 
 
 def _centroid_to_color(centroid, brightness=1.0):
-    """Interpolate through the 5 pyramid band colors using a centroid in [0, 1].
+    """Interpolate through pyramid band colors using a centroid in [0, 1].
 
-    centroid=0 → fine (cyan), centroid=1 → extra-coarse (purple).
+    centroid=0 → yellow-wide, centroid=1 → extra-coarse (purple).
     brightness scales the result, e.g. 0.65 for dimmed slow-flow arrows.
     """
     colors = _PYRAMID_BAND_COLORS
-    n = len(colors) - 1          # 4 segments
+    n = len(colors) - 1
     t = float(np.clip(centroid, 0.0, 1.0)) * n
     lo = int(t)
     hi = min(lo + 1, n)
@@ -638,8 +703,8 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
 
     out = frame
     h, w = out.shape[:2]
-    g = pyramid_data.get("global_bands", [0.0, 0.0, 0.0, 0.0, 0.0])
-    g_t = pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0, 0.0, 0.0])
+    g = pyramid_data.get("global_bands", [0.0, 0.0, 0.0])
+    g_t = pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0])
     g_ctr = float(pyramid_data.get("scale_centroid", 0.0))
     q = pyramid_data.get("quadrant_bands", {})
     q_t = pyramid_data.get("quadrant_temporal_bands", {})
@@ -759,6 +824,7 @@ def main():
     print(f"Video FPS: {fps:.2f}")
 
     analyzer = WaveAnalyzer(fps=fps)
+    analyzer.enable_gabor_analysis = False
     quality_presets = [
         {"downscale": 1.0, "slit_count": 6, "contour_min_area": 20.0, "frame_skip": 1},
         {"downscale": 0.75, "slit_count": 5, "contour_min_area": 28.0, "frame_skip": 1},
@@ -941,6 +1007,7 @@ def main():
     show_flow_overlay = True
     show_contour_overlay = False
     show_threshold_overlay = False
+    show_texture_overlay = True
     analyzer.enable_threshold_filter = show_threshold_overlay
     show_spectrum_overlay = True
     show_cpu_profile = True
@@ -981,7 +1048,6 @@ def main():
         "contours_ms",
         "pyramid_ms",
         "lbp_ms",
-        "gabor_ms",
         "flow_ms",
         "fusion_ms",
         "render_ms",
@@ -1000,7 +1066,6 @@ def main():
         "contours_ms": 0.0,
         "pyramid_ms": 0.0,
         "lbp_ms": 0.0,
-        "gabor_ms": 0.0,
         "flow_ms": 0.0,
         "fusion_ms": 0.0,
         "render_ms": 0.0,
@@ -1016,7 +1081,6 @@ def main():
         "contours_pct": 0.0,
         "pyramid_pct": 0.0,
         "lbp_pct": 0.0,
-        "gabor_pct": 0.0,
         "flow_pct": 0.0,
         "fusion_pct": 0.0,
         "render_pct": 0.0,
@@ -1124,6 +1188,7 @@ def main():
             "contour_overlay": show_contour_overlay,
             "threshold_overlay": show_threshold_overlay,
             "spectrum_overlay": show_spectrum_overlay,
+            "texture_overlay": show_texture_overlay,
             "temporal_mode_label": temporal_modes[temporal_mode_idx]["label"],
             "temporal_filter": analyzer.enable_temporal_change_filter,
             "screen_blend_label": ["off", "1x", "2x"][max(0, min(2, analyzer.screen_blend_mode))],
@@ -1132,7 +1197,6 @@ def main():
             "contour_motion_filter": analyzer.enable_contour_motion_filter,
             "static_contours": analyzer.show_static_contours,
             "lbp_analysis": analyzer.enable_lbp_analysis,
-            "gabor_analysis": analyzer.enable_gabor_analysis,
             "contour_motion_threshold_label": (
                 "off"
                 if float(analyzer.contour_motion_threshold_px) <= 0.0
@@ -1174,8 +1238,10 @@ def main():
             pyramid_data=analysis.get("pyramid_data") if analysis else None,
             wavelength_data=analysis.get("wavelength_data") if analysis else None,
             lbp_data=analysis.get("lbp_data") if analysis else None,
-            gabor_data=analysis.get("gabor_data") if analysis else None,
         )
+
+        if show_texture_overlay and analysis:
+            display = draw_lbp_overlay(display, analysis.get("lbp_data"))
 
         if analyzer.show_mask and analyzer.mask_points:
             pts = np.array(analyzer.mask_points, dtype=np.int32)
@@ -1218,7 +1284,6 @@ def main():
         profile_windows["contours_ms"].append(analysis["timings"].get("contours_ms", 0.0))
         profile_windows["pyramid_ms"].append(analysis["timings"].get("pyramid_ms", 0.0))
         profile_windows["lbp_ms"].append(analysis["timings"].get("lbp_ms", 0.0))
-        profile_windows["gabor_ms"].append(analysis["timings"].get("gabor_ms", 0.0))
         profile_windows["flow_ms"].append(analysis["timings"].get("flow_ms", 0.0))
         profile_windows["fusion_ms"].append(analysis["timings"].get("fusion_ms", 0.0))
         loop_end = time.perf_counter()
@@ -1237,7 +1302,6 @@ def main():
                 "contours_pct": avg_profile_ms["contours_ms"] / total_for_pct * 100.0,
                 "pyramid_pct": avg_profile_ms["pyramid_ms"] / total_for_pct * 100.0,
                 "lbp_pct": avg_profile_ms["lbp_ms"] / total_for_pct * 100.0,
-                "gabor_pct": avg_profile_ms["gabor_ms"] / total_for_pct * 100.0,
                 "flow_pct": avg_profile_ms["flow_ms"] / total_for_pct * 100.0,
                 "fusion_pct": avg_profile_ms["fusion_ms"] / total_for_pct * 100.0,
                 "render_pct": avg_profile_ms["render_ms"] / total_for_pct * 100.0,
@@ -1261,6 +1325,8 @@ def main():
             mode_idx = (mode_idx + 1) % len(DISPLAY_MODES)
         if key == ord("v"):
             show_flow_overlay = not show_flow_overlay
+        if key == ord("w"):
+            show_texture_overlay = not show_texture_overlay
         if key == ord("c"):
             show_contour_overlay = not show_contour_overlay
         if key == ord("u"):
@@ -1279,9 +1345,6 @@ def main():
         if key == ord("j"):
             analyzer.enable_lbp_analysis = not analyzer.enable_lbp_analysis
             profile_windows["lbp_ms"].clear()
-        if key == ord("o"):
-            analyzer.enable_gabor_analysis = not analyzer.enable_gabor_analysis
-            profile_windows["gabor_ms"].clear()
         if key == ord("f"):
             next_idx = (flow_detail_modes.index(flow_detail_mode) + 1) % len(flow_detail_modes)
             flow_detail_mode = flow_detail_modes[next_idx]

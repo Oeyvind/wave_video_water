@@ -67,6 +67,8 @@ def _bandpass_amps_time_domain(signal_1d, sample_rate_hz, centers_hz):
 class WaveAnalyzer:
     """Realtime wave analyzer with contour, spectral, and optical-flow engines."""
 
+    PYRAMID_BAND_COUNT = 3
+
     def __init__(self, fps=30.0):
         self.fps = max(1.0, float(fps))
         self.downscale = 0.5
@@ -100,9 +102,14 @@ class WaveAnalyzer:
         self.wl_use_median = True
         self.prev_pyramid_bands = None
         self.pyramid_temporal_activity = 0.0
-        self.pyramid_temporal_band_activity = [0.0, 0.0, 0.0, 0.0, 0.0]
+        self.pyramid_temporal_band_activity = [0.0] * self.PYRAMID_BAND_COUNT
         self.prev_quadrant_bands = {}
         self.quadrant_temporal_band_activity = {}
+        # Intermediate default: higher texture cap for better yellow-band fidelity
+        # while retaining lower CPU than full-resolution analysis.
+        self.pyramid_max_dim = 640
+        self.pyramid_update_interval = 2
+        self._last_pyramid_data = None
         self.last_flow_metrics = {
             "direction_deg": 0.0,
             "speed_norm": 0.0,
@@ -188,7 +195,7 @@ class WaveAnalyzer:
 
         # Optional texture descriptor stages.
         self.enable_lbp_analysis = True
-        self.enable_gabor_analysis = True
+        self.enable_gabor_analysis = False
 
         history_len = int(self.fps * 4.0)
         self.slit_history = [deque(maxlen=history_len) for _ in range(self.slit_count)]
@@ -622,9 +629,14 @@ class WaveAnalyzer:
 
     @staticmethod
     def _pyramid_band_energies(gray_img, normalize=True):
-        """Compute 5-band texture energies from a Gaussian/Laplacian pyramid."""
+        """Compute 3-band texture energies from a Gaussian/Laplacian pyramid.
+
+        Band 0 is a broader band centered on the former yellow scale and
+        blended with neighboring orange/green scales. Bands 1-2 preserve the
+        former blue/purple coarse lowpass bands.
+        """
         if gray_img is None or gray_img.size == 0:
-            return [0.0, 0.0, 0.0, 0.0, 0.0]
+            return [0.0, 0.0, 0.0]
 
         base = gray_img.astype(np.float32) / 255.0
         levels = [base]
@@ -634,20 +646,33 @@ class WaveAnalyzer:
                 break
             levels.append(cv2.pyrDown(prev))
 
-        energies = [0.0, 0.0, 0.0, 0.0, 0.0]
-        lap_count = min(4, len(levels) - 1)
+        fine_laps = [0.0, 0.0, 0.0]
+        lap_count = min(3, len(levels) - 1)
         for i in range(lap_count):
             up = cv2.pyrUp(levels[i + 1], dstsize=(levels[i].shape[1], levels[i].shape[0]))
             band = levels[i] - up
-            energies[i] = float(np.mean(np.abs(band)))
+            fine_laps[i] = float(np.mean(np.abs(band)))
 
-        # Coarse and extra-coarse are taken from the two deepest available
-        # lowpass levels, yielding one more octave of larger-scale structure.
+        # Broaden the first band around former yellow using neighboring scales.
+        broad_weights = np.asarray([0.25, 0.5, 0.25], dtype=np.float32)
+        fine_arr = np.asarray(fine_laps, dtype=np.float32)
+        active = fine_arr > 0.0
+        if np.any(active):
+            w = broad_weights * active.astype(np.float32)
+            broad_band = float(np.dot(fine_arr, w) / (float(np.sum(w)) + 1e-9))
+        else:
+            broad_band = 0.0
+
+        # Preserve the former blue/purple coarse bands from deep lowpass levels.
+        coarse_band = 0.0
+        extra_coarse_band = 0.0
         if len(levels) >= 2:
-            energies[3] = max(energies[3], float(np.std(levels[-2])))
-            energies[4] = max(energies[4], float(np.std(levels[-1])))
+            coarse_band = float(np.std(levels[-2]))
+            extra_coarse_band = float(np.std(levels[-1]))
         elif len(levels) == 1:
-            energies[3] = float(np.std(levels[0]))
+            coarse_band = float(np.std(levels[0]))
+
+        energies = [broad_band, coarse_band, extra_coarse_band]
 
         if not normalize:
             return [float(e) for e in energies]
@@ -670,30 +695,22 @@ class WaveAnalyzer:
 
     def _analyze_lbp_texture(self, gray_img):
         """Dense LBP summary for local roughness and micro-texture stability."""
+        zero_result = {
+            "lbp_mean": 0.0,
+            "lbp_std": 0.0,
+            "lbp_entropy": 0.0,
+            "lbp_uniform_ratio": 0.0,
+            "lbp_roughness": 0.0,
+            "lbp_dominant_code": 0,
+            "lbp_dominant_ratio": 0.0,
+            "lbp_histogram_16": [0.0] * 16,
+        }
         if gray_img is None or gray_img.size == 0:
-            return {
-                "lbp_mean": 0.0,
-                "lbp_std": 0.0,
-                "lbp_entropy": 0.0,
-                "lbp_uniform_ratio": 0.0,
-                "lbp_roughness": 0.0,
-                "lbp_dominant_code": 0,
-                "lbp_dominant_ratio": 0.0,
-                "lbp_histogram_16": [0.0] * 16,
-            }
+            return zero_result
 
         view = self._resize_for_texture_analysis(gray_img, max_dim=320)
         if min(view.shape[:2]) < 3:
-            return {
-                "lbp_mean": 0.0,
-                "lbp_std": 0.0,
-                "lbp_entropy": 0.0,
-                "lbp_uniform_ratio": 0.0,
-                "lbp_roughness": 0.0,
-                "lbp_dominant_code": 0,
-                "lbp_dominant_ratio": 0.0,
-                "lbp_histogram_16": [0.0] * 16,
-            }
+            return zero_result
 
         padded = np.pad(view.astype(np.uint8), 1, mode="edge")
         center = padded[1:-1, 1:-1]
@@ -715,7 +732,8 @@ class WaveAnalyzer:
         hist256 = np.bincount(codes.ravel(), minlength=256).astype(np.float32)
         hist_sum = float(np.sum(hist256)) + 1e-9
         hist256 /= hist_sum
-        hist16 = hist256.reshape(16, 16).sum(axis=1)
+        # Compact view: 16 grouped bins from 256 codes (16 codes per bin).
+        hist16 = np.asarray([float(np.sum(chunk)) for chunk in np.array_split(hist256, 16)], dtype=np.float32)
 
         bits = ((codes[..., None] >> np.arange(8, dtype=np.uint8)) & 1).astype(np.uint8)
         transitions = np.sum(bits != np.roll(bits, -1, axis=2), axis=2)
@@ -804,29 +822,37 @@ class WaveAnalyzer:
         }
 
     def _analyze_pyramid_texture(self, roi_gray):
-        h, w = roi_gray.shape
+        # Update pyramid analysis at a lower rate and reuse cached results
+        # on in-between frames to reduce CPU usage.
+        update_every = max(1, int(self.pyramid_update_interval))
+        if (self.frame_index % update_every) != 0 and self._last_pyramid_data is not None:
+            return self._last_pyramid_data
+
+        band_count = self.PYRAMID_BAND_COUNT
+        texture_view = self._resize_for_texture_analysis(roi_gray, max_dim=int(max(64, self.pyramid_max_dim)))
+        h, w = texture_view.shape
         half_h = h // 2
         half_w = w // 2
 
         quadrants = {
-            "UL": roi_gray[0:half_h, 0:half_w],
-            "UR": roi_gray[0:half_h, half_w:w],
-            "LL": roi_gray[half_h:h, 0:half_w],
-            "LR": roi_gray[half_h:h, half_w:w],
+            "UL": texture_view[0:half_h, 0:half_w],
+            "UR": texture_view[0:half_h, half_w:w],
+            "LL": texture_view[half_h:h, 0:half_w],
+            "LR": texture_view[half_h:h, half_w:w],
         }
 
         quadrant_bands = {}
         quadrant_raw_bands = {}
         for label, block in quadrants.items():
             if block.size == 0 or min(block.shape[:2]) < 8:
-                quadrant_bands[label] = [0.0, 0.0, 0.0, 0.0, 0.0]
-                quadrant_raw_bands[label] = [0.0, 0.0, 0.0, 0.0, 0.0]
+                quadrant_bands[label] = [0.0] * band_count
+                quadrant_raw_bands[label] = [0.0] * band_count
             else:
                 quadrant_bands[label] = self._pyramid_band_energies(block)
                 quadrant_raw_bands[label] = self._pyramid_band_energies(block, normalize=False)
 
-        global_bands = self._pyramid_band_energies(roi_gray)
-        global_raw_bands = self._pyramid_band_energies(roi_gray, normalize=False)
+        global_bands = self._pyramid_band_energies(texture_view)
+        global_raw_bands = self._pyramid_band_energies(texture_view, normalize=False)
         curr_bands = np.asarray(global_raw_bands, dtype=np.float32)
         _TEMPORAL_GAIN = 350.0
         if self.prev_pyramid_bands is None:
@@ -851,10 +877,10 @@ class WaveAnalyzer:
             qcurr = np.asarray(qbands, dtype=np.float32)
             qprev = self.prev_quadrant_bands.get(qlabel)
             if qprev is None:
-                qdelta = np.zeros(5, dtype=np.float32)
+                qdelta = np.zeros(band_count, dtype=np.float32)
             else:
                 qdelta = np.abs(qcurr - qprev)
-            prev_qt = self.quadrant_temporal_band_activity.get(qlabel, [0.0] * 5)
+            prev_qt = self.quadrant_temporal_band_activity.get(qlabel, [0.0] * band_count)
             new_qt = [
                 float((0.82 * p) + (0.18 * _t_shape(_TEMPORAL_GAIN * d)))
                 for p, d in zip(prev_qt, qdelta)
@@ -866,13 +892,14 @@ class WaveAnalyzer:
         quadrant_scale_centroids = {}
         for qlabel, qbands in quadrant_bands.items():
             qarr = np.asarray(qbands, dtype=np.float32)
-            quadrant_scale_centroids[qlabel] = float(np.dot(np.arange(5, dtype=np.float32), qarr) / 4.0)
+            denom = float(max(1, band_count - 1))
+            quadrant_scale_centroids[qlabel] = float(np.dot(np.arange(band_count, dtype=np.float32), qarr) / denom)
 
         dominant_idx = int(np.argmax(np.asarray(global_bands, dtype=np.float32)))
-        centroid = float(np.dot(np.arange(5, dtype=np.float32), np.asarray(global_bands, dtype=np.float32))) / 4.0
-        band_labels = ["fine", "mid-fine", "mid-coarse", "coarse", "extra-coarse"]
+        centroid = float(np.dot(np.arange(band_count, dtype=np.float32), np.asarray(global_bands, dtype=np.float32))) / float(max(1, band_count - 1))
+        band_labels = ["yellow-wide", "coarse", "extra-coarse"]
 
-        return {
+        out = {
             "global_bands": global_bands,
             "quadrant_bands": quadrant_bands,
             "band_labels": band_labels,
@@ -884,6 +911,8 @@ class WaveAnalyzer:
             "quadrant_temporal_bands": quadrant_temporal_bands,
             "quadrant_scale_centroids": quadrant_scale_centroids,
         }
+        self._last_pyramid_data = out
+        return out
 
     def _slit_rows(self, h):
         if self.slit_count <= 1:
@@ -1523,7 +1552,7 @@ class WaveAnalyzer:
         return out
 
     def _fuse(self, contours, pyramid, flow):
-        global_bands = pyramid.get("global_bands", [0.0, 0.0, 0.0, 0.0, 0.0])
+        global_bands = pyramid.get("global_bands", [0.0, 0.0, 0.0])
         dominant_idx = int(pyramid.get("dominant_scale_index", 0))
         raw = {
             # Kept for OSC/UI compatibility; now maps to dominant texture scale.
