@@ -395,6 +395,7 @@ def _flow_arrow_centers(frame_h, frame_w):
     q_radius = 34
     diameter = q_radius * 2
     offset = int(round(diameter * 0.6))
+    left_group_h = 52 + 18 + 24 + 52 + 16 + 24
 
     centers = {}
     for label, base_center in (
@@ -407,6 +408,11 @@ def _flow_arrow_centers(frame_h, frame_w):
         corner_dy = -offset if base_center[1] < (frame_h * 0.5) else offset
         c_x = int(np.clip(base_center[0] + corner_dx, q_radius + 2, frame_w - q_radius - 2))
         c_y = int(np.clip(base_center[1] + corner_dy, q_radius + 2, frame_h - q_radius - 2))
+        if label in ("UL", "UR", "LL", "LR"):
+            # UL/UR/LL/LR: circle-top and WL/S-top share one clip space,
+            # preventing large offsets when one element clips before others.
+            shared_top = int(np.clip(c_y - q_radius, 24, max(24, frame_h - 24 - left_group_h)))
+            c_y = int(np.clip(shared_top + q_radius, q_radius + 2, frame_h - q_radius - 2))
         centers[label] = (c_x, c_y)
 
     centers["G"] = (int(frame_w * 0.5), int(frame_h * 0.5))
@@ -419,6 +425,8 @@ def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10,
     slider_h = int(max(24, slider_h))
     slider_w = int(max(6, slider_w))
     value = 0.0 if value is None else float(max(0.0, value))
+    if label == "WL":
+        value *= 1.3
     norm = float(np.clip(value / max(value_max, 1e-6), 0.0, 1.0))
 
     draw_transparent_rect(frame, x0 - 4, y0 - 16, slider_w + 8, slider_h + 22, alpha=0.52)
@@ -476,8 +484,6 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
             else:
                 cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), q_color, 2, tipLength=0.22)
 
-        cv2.putText(out, label, (shifted_center[0] - 12, shifted_center[1] - radius - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (235, 235, 235), 1, cv2.LINE_AA)
-
     # Global summary arrow
     g_direction_deg, g_strength, g_has_motion = _quadrant_vector_stats(flow)
     g_center = centers["G"]
@@ -513,8 +519,6 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
             x = g_center[0] + arc_dx + 4
         cv2.putText(out, rate_text, (x, y), font, font_scale, global_color, thickness, cv2.LINE_AA)
 
-    cv2.putText(out, "G", (g_center[0] - 7, g_center[1] - g_radius - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (245, 245, 245), 1, cv2.LINE_AA)
-
     return out
 
 
@@ -539,6 +543,8 @@ def draw_adaptive_flow_arrow(frame, flow_data, axial=False):
     center = (cx, cy)
     a_color = (0, 220, 110)   # lime-green, visually distinct from fast (blue) and slow (dark blue)
     a_radius = 56             # slightly larger ring than G (42) to frame the arrow
+    # Slightly thicker for visibility.
+    a_thickness = 2
     cv2.circle(out, center, a_radius, a_color, 1)
 
     # Arrow length: fixed base + quality-scaled extension, capped sensibly.
@@ -547,9 +553,9 @@ def draw_adaptive_flow_arrow(frame, flow_data, axial=False):
     dx = int(np.cos(np.radians(_dir)) * arrow_len)
     dy = int(np.sin(np.radians(_dir)) * arrow_len)
     if axial:
-        _draw_axial_arrow(out, center, dx, dy, a_color, 3, 0.20)
+        _draw_axial_arrow(out, center, dx, dy, a_color, a_thickness, 0.20)
     else:
-        cv2.arrowedLine(out, center, (cx + dx, cy + dy), a_color, 3, tipLength=0.20)
+        cv2.arrowedLine(out, center, (cx + dx, cy + dy), a_color, a_thickness, tipLength=0.20)
 
     src = flow_data.get("direction_source_label", "")
     cv2.putText(out, f"A:{src}", (cx - 18, cy - a_radius - 6),
@@ -557,68 +563,186 @@ def draw_adaptive_flow_arrow(frame, flow_data, axial=False):
     return out
 
 
+def _draw_lbp_triangle_widget(
+    frame,
+    lbp,
+    tx,
+    ty,
+    tri_h,
+    show_title=False,
+    show_semantic=False,
+    text_scale=0.26,
+):
+    """Draw one LBP triangle widget at top-left (tx, ty)."""
+    if not lbp:
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+
+    tri_h = int(max(40, tri_h))
+    tri_s = int(round(tri_h * 2.0 / np.sqrt(3.0)))
+    tx = int(np.clip(tx, 2, max(2, w - tri_s - 2)))
+    ty = int(np.clip(ty, 8, max(8, h - tri_h - 16)))
+
+    roughness = float(lbp.get("lbp_roughness", 0.0))
+    entropy = float(lbp.get("lbp_entropy", 0.0))
+    uniform = float(lbp.get("lbp_uniform_ratio", 0.0))
+    rough_entr = float(lbp.get("lbp_roughness_entropy", 0.0))
+    unif_rough_entr = float(lbp.get("lbp_uniform_rough_entr", 0.0))
+
+    p_tl = (tx, ty)
+    p_tr = (tx + tri_s, ty)
+    p_bot = (tx + tri_s // 2, ty + tri_h)
+    p_tc = (tx + tri_s // 2, ty)
+    half_s = tri_s // 2
+    tri_pts = np.array([p_tl, p_tr, p_bot], dtype=np.int32)
+
+    ov = out.copy()
+    cv2.fillPoly(ov, [tri_pts], (25, 25, 25))
+    cv2.addWeighted(ov, 0.58, out, 0.42, 0, out)
+    cv2.polylines(out, [tri_pts], True, (140, 140, 140), 1, cv2.LINE_AA)
+
+    bar_thick = max(2, int(round(3.0 * tri_h / 100.0)))
+    vbar_w = bar_thick
+
+    e_norm = float(np.clip(entropy / 8.0, 0.0, 1.0))
+    e_len = int(round(e_norm * half_s))
+    if e_len > 0:
+        cv2.rectangle(out, (p_tc[0] - e_len, p_tc[1] + 1), (p_tc[0], p_tc[1] + 1 + bar_thick), (170, 90, 200), -1)
+
+    r_len = int(round(float(np.clip(roughness, 0.0, 1.0)) * half_s))
+    if r_len > 0:
+        cv2.rectangle(out, (p_tc[0], p_tc[1] + 1), (p_tc[0] + r_len, p_tc[1] + 1 + bar_thick), (200, 120, 50), -1)
+
+    u_len = int(round(float(np.clip(uniform, 0.0, 1.0)) * tri_h))
+    if u_len > 0:
+        bvx = p_tc[0] - vbar_w // 2
+        cv2.rectangle(out, (bvx, p_tc[1]), (bvx + vbar_w, p_tc[1] + u_len), (60, 170, 210), -1)
+
+    v = float(np.clip((unif_rough_entr + 1.0) / 2.0, 0.0, 1.0))
+    hh = float(np.clip((rough_entr * 5.0 + 1.0) / 2.0, 0.0, 1.0))
+    dot_y = ty + int(v * tri_h)
+    left_x = tx + int(v * half_s)
+    right_x = tx + tri_s - int(v * half_s)
+    dot_x = left_x + int(hh * (right_x - left_x))
+    dot_r = max(2, int(round(4.0 * tri_h / 100.0)))
+    cv2.circle(out, (dot_x, dot_y), dot_r, (0, 200, 80), -1, cv2.LINE_AA)
+    cv2.circle(out, (dot_x, dot_y), dot_r, (0, 255, 120), 1, cv2.LINE_AA)
+
+    f = cv2.FONT_HERSHEY_SIMPLEX
+    fs = float(text_scale)
+    if show_title:
+        t_lbl = "LBP texture"
+        (tlw, _), _ = cv2.getTextSize(t_lbl, f, fs, 1)
+        cv2.putText(out, t_lbl, (tx + tri_s // 2 - tlw // 2, ty - 4), f, fs, (200, 200, 180), 1, cv2.LINE_AA)
+
+    if show_semantic:
+        c_lbl = "chaos"
+        cv2.putText(out, c_lbl, (p_tl[0] - 21, p_tl[1] - 4), f, fs, (200, 200, 180), 1, cv2.LINE_AA)
+        o_lbl = "order"
+        (olw, _), _ = cv2.getTextSize(o_lbl, f, fs, 1)
+        cv2.putText(out, o_lbl, (p_tr[0] - olw + 21, p_tr[1] - 4), f, fs, (200, 200, 180), 1, cv2.LINE_AA)
+        s_lbl = "smooth"
+        (slw, _), _ = cv2.getTextSize(s_lbl, f, fs, 1)
+        cv2.putText(out, s_lbl, (p_bot[0] - slw // 2, p_bot[1] + 12), f, fs, (200, 200, 180), 1, cv2.LINE_AA)
+
+    lbl_y = p_tc[1] + bar_thick + max(7, int(round(9.0 * tri_h / 100.0)))
+    e_lbl = f"E {entropy:.2f}"
+    cv2.putText(out, e_lbl, (p_tc[0] - e_len, lbl_y), f, fs, (170, 90, 200), 1, cv2.LINE_AA)
+    r_lbl = f"R {roughness:.2f}"
+    (rlw, _), _ = cv2.getTextSize(r_lbl, f, fs, 1)
+    cv2.putText(out, r_lbl, (p_tc[0] + r_len - rlw, lbl_y), f, fs, (200, 120, 50), 1, cv2.LINE_AA)
+    u_lbl = f"U {uniform:.2f}"
+    cv2.putText(out, u_lbl, (p_tc[0] + vbar_w + 2, p_tc[1] + u_len // 2 + 4), f, fs, (60, 170, 210), 1, cv2.LINE_AA)
+
+    return out
+
+
+def draw_quadrant_lbp_triangles(frame, lbp_data):
+    """Draw compact LBP triangle widgets near each quadrant flow-arrow circle."""
+    lbp = lbp_data or {}
+    quads = lbp.get("quadrants", {})
+    if not quads:
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+    centers = _flow_arrow_centers(h, w)
+    q_radius = 34
+    pad = 10
+    tri_h = 62
+    tri_s = int(round(tri_h * 2.0 / np.sqrt(3.0)))
+    group_h = 52 + 18 + 24 + 52 + 16 + 24
+    spatial_bar_h = 52
+    centroid_stack_h = 24
+    temporal_gap_h = 12
+    left_temporal_shift_y = -8
+
+    for q_label, qc in centers.items():
+        if q_label == "G":
+            continue
+        q_lbp = quads.get(q_label, {})
+        if not q_lbp:
+            continue
+
+        tx = qc[0] - tri_s // 2
+        # All quadrants: triangle anchors to WL x-position (same ordering everywhere).
+        tx = qc[0] - q_radius - pad - 10
+
+        tx = int(np.clip(tx, 2, max(2, w - tri_s - 2)))
+        if q_label in ("UL", "UR", "LL", "LR"):
+            # UL/UR/LL/LR share one clipped anchor so all overlay elements
+            # keep identical relative positions without clipping drift.
+            spatial_top = int(np.clip(qc[1] - 34, 24, max(24, h - 24 - group_h)))
+            temporal_top = spatial_top + spatial_bar_h + temporal_gap_h + centroid_stack_h + left_temporal_shift_y
+            ty = temporal_top
+        elif qc[1] < h // 2:
+            ty = qc[1] + q_radius + 6
+        else:
+            ty = qc[1] - q_radius - tri_h - 6
+        ty = int(np.clip(ty, 8, max(8, h - tri_h - 16)))
+
+        out = _draw_lbp_triangle_widget(
+            out,
+            q_lbp,
+            tx,
+            ty,
+            tri_h=tri_h,
+            show_title=False,
+            show_semantic=False,
+            text_scale=0.22,
+        )
+
+    return out
+
+
 def draw_lbp_overlay(frame, lbp_data):
-    """LBP overlay with aggregate gauges and compound metrics."""
+    """Global LBP triangle, anchored below the central flow ring."""
     lbp = lbp_data or {}
     if not lbp:
         return frame
 
     out = frame.copy()
     h, w = out.shape[:2]
-    scale = 0.8
-    panel_w = int(round(280 * scale))
-    panel_h = int(round(170 * scale))
-    # Center-bottom placement.
-    x0 = (w - panel_w) // 2
-    y0 = h - panel_h - 8
-    draw_transparent_rect(out, x0, y0, panel_w, panel_h, alpha=0.58)
-    cv2.putText(out, "LBP texture measures", (x0 + 6, y0 + 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (230, 230, 230), 1, cv2.LINE_AA)
+    cx, cy = _flow_arrow_centers(h, w)["G"]
 
-    # Primary aggregate bars
-    roughness = float(lbp.get("lbp_roughness", 0.0))
-    entropy = float(lbp.get("lbp_entropy", 0.0))
-    uniform = float(lbp.get("lbp_uniform_ratio", 0.0))
-    agg_x = x0 + 8
-    agg_y = y0 + 24
-    agg_w = panel_w - 16
-    agg_h = 6
-    agg_gap = 10
-    for label, val, col in [
-        ("roughness", roughness, (200, 120, 50)),
-        ("entropy", min(entropy / 8.0, 1.0), (170, 90, 200)),
-        ("uniform", uniform, (60, 170, 210)),
-    ]:
-        filled = max(0, int(round(val * agg_w)))
-        cv2.rectangle(out, (agg_x, agg_y), (agg_x + agg_w, agg_y + agg_h), (72, 72, 72), 1)
-        if filled > 0:
-            cv2.rectangle(out, (agg_x, agg_y), (agg_x + filled, agg_y + agg_h), col, -1)
-        cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.30, (208, 208, 208), 1, cv2.LINE_AA)
-        agg_y += agg_h + agg_gap
+    tri_h = 77
+    tri_s = int(round(tri_h * 2.0 / np.sqrt(3.0)))
+    tx = cx - tri_s // 2 - 12
+    ty = cy + 56 + 10 + 20
+    ty = int(np.clip(ty, 8, max(8, h - tri_h - 16)))
 
-    # Compound measures header
-    agg_y += 2
-    cv2.putText(out, "Compound measures", (agg_x, agg_y + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.32, (210, 210, 130), 1, cv2.LINE_AA)
-    agg_y += 16
-
-    # Compound metric bars
-    rough_entr = float(lbp.get("lbp_roughness_entropy", 0.0))
-    unif_rough_entr = float(lbp.get("lbp_uniform_rough_entr", 0.0))
-    for label, val, col in [
-        ("Rough-Entr", float(np.clip((rough_entr * 5.0 + 1.0) / 2.0, 0.0, 1.0)), (180, 140, 60)),
-        ("Unif/RoughEntr", min(unif_rough_entr / 1.5, 1.0), (100, 190, 180)),
-    ]:
-        filled = max(0, int(round(val * agg_w)))
-        cv2.rectangle(out, (agg_x, agg_y), (agg_x + agg_w, agg_y + agg_h), (72, 72, 72), 1)
-        if filled > 0:
-            cv2.rectangle(out, (agg_x, agg_y), (agg_x + filled, agg_y + agg_h), col, -1)
-        if label == "Rough-Entr":
-            # Center tick marks the balanced (roughness == entropy) point.
-            tick_x = agg_x + agg_w // 2
-            cv2.line(out, (tick_x, agg_y), (tick_x, agg_y + agg_h), (200, 200, 200), 1)
-        cv2.putText(out, f"{label} {val:.2f}", (agg_x, agg_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.28, (200, 200, 200), 1, cv2.LINE_AA)
-        agg_y += agg_h + agg_gap
-
-    return out
+    return _draw_lbp_triangle_widget(
+        out,
+        lbp,
+        tx,
+        ty,
+        tri_h=tri_h,
+        show_title=True,
+        show_semantic=True,
+        text_scale=0.32,
+    )
 
 
 # Pyramid texture band colors: yellow-wide, coarse, extra-coarse.
@@ -664,7 +788,7 @@ def _rate_hz_to_color(rate_hz, min_hz=0.5, max_hz=30.0):
     return _centroid_to_color(norm)
 
 
-def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=4, temporal_bands=None, centroid=None):
+def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=4, temporal_bands=None, centroid=None, temporal_shift_y=0):
     bands = list(bands) if bands is not None else [0.0] * len(_PYRAMID_BAND_COLORS)
     if len(bands) < len(_PYRAMID_BAND_COLORS):
         bands = bands + [0.0] * (len(_PYRAMID_BAND_COLORS) - len(bands))
@@ -677,10 +801,10 @@ def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=
     t_centroid_rows = centroid_h + 12 if temporal_present else 0
     group_h = bar_h + 18 + (centroid_h + 12 if centroid_present else 0) + (temporal_h + 16 if temporal_present else 0) + t_centroid_rows
 
-    draw_transparent_rect(frame, x0 - 4, y0 - 14, group_w + 8, group_h + 8, alpha=0.52)
-    cv2.putText(frame, label, (x0, y0 - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (225, 225, 225), 1, cv2.LINE_AA)
+    draw_transparent_rect(frame, x0 - 4, y0 - 14, group_w + 24, group_h + 8, alpha=0.52)
 
     base_y = y0 + bar_h
+    cv2.putText(frame, "S", (x0 + group_w + 6, base_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (205, 205, 205), 1, cv2.LINE_AA)
     for idx in range(bar_count):
         val = float(np.clip(bands[idx], 0.0, 1.0))
         hpx = int(max(1, round(val * bar_h)))
@@ -710,9 +834,9 @@ def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=
         tvals = list(temporal_bands)
         if len(tvals) < bar_count:
             tvals = tvals + [0.0] * (bar_count - len(tvals))
-        t_y0 = base_y + 12 + temporal_offset
+        t_y0 = base_y + 12 + temporal_offset + int(temporal_shift_y)
         t_base_y = t_y0 + temporal_h
-        cv2.putText(frame, "T", (x0 - 12, t_base_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (205, 205, 205), 1, cv2.LINE_AA)
+        cv2.putText(frame, "T", (x0 + group_w + 6, t_base_y - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (205, 205, 205), 1, cv2.LINE_AA)
         for idx in range(bar_count):
             val = float(np.clip(tvals[idx], 0.0, 1.0))
             hpx = int(max(1, round(val * temporal_h)))
@@ -743,10 +867,15 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     if not isinstance(pyramid_data, dict):
         return frame
 
+    def _scale_pyramid_vals(vals):
+        if vals is None:
+            return None
+        return [float(np.clip(float(v) * 1.3, 0.0, 1.0)) for v in vals]
+
     out = frame
     h, w = out.shape[:2]
-    g = pyramid_data.get("global_bands", [0.0, 0.0, 0.0])
-    g_t = pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0])
+    g = _scale_pyramid_vals(pyramid_data.get("global_bands", [0.0, 0.0, 0.0]))
+    g_t = _scale_pyramid_vals(pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0]))
     g_ctr = float(pyramid_data.get("scale_centroid", 0.0))
     q = pyramid_data.get("quadrant_bands", {})
     q_t = pyramid_data.get("quadrant_temporal_bands", {})
@@ -765,32 +894,36 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     q_radius = 34
     g_radius = 42
     pad = 10
+    left_temporal_shift_y = -8
 
     for label in ("UL", "UR", "LL", "LR"):
         cx, cy = centers[label]
-        if label in ("UL", "LL"):
-            # Bars on inward side (toward horizontal center), wavelength on opposite side.
-            x = cx + q_radius + pad
-            wl_x = cx - q_radius - pad - 10
-        else:
-            x = cx - q_radius - pad - group_w
-            wl_x = cx + q_radius + pad
+        # Same ordering in all quadrants: WL (left) -> flow circle -> S/T bars (right).
+        x = cx + q_radius + pad
+        wl_x = cx - q_radius - pad - 10
         y = cy - (group_h // 2)
+        wl_y = cy - 34
+        if label in ("UL", "UR", "LL", "LR"):
+            # UL/UR/LL/LR: use one clipped top reference for both S bars and WL.
+            left_top = int(np.clip(cy - 34, 24, max(24, h - 24 - group_h)))
+            y = left_top
+            wl_y = left_top
         x = int(np.clip(x, 14, max(14, w - 14 - group_w)))
         y = int(np.clip(y, 24, max(24, h - 24 - group_h)))
-        _draw_pyramid_bar_group(out, x, y, q.get(label, [0.0] * bar_count), label,
-                    temporal_bands=q_t.get(label), centroid=q_ctr.get(label))
+        _draw_pyramid_bar_group(out, x, y, _scale_pyramid_vals(q.get(label, [0.0] * bar_count)), "",
+            temporal_bands=_scale_pyramid_vals(q_t.get(label)), centroid=q_ctr.get(label),
+            temporal_shift_y=(left_temporal_shift_y if label in ("UL", "UR", "LL", "LR") else 0))
         wl_val = (q_wl.get(label) or {}).get("wavelength_px")
-        wl_y = int(np.clip(cy - 34, 24, max(24, h - 24 - 68)))
+        wl_y = int(np.clip(wl_y, 24, max(24, h - 24 - 68)))
         wl_x = int(np.clip(wl_x, 10, max(10, w - 10 - 10)))
         _draw_vertical_slider(out, wl_x, wl_y, wl_val, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
 
     g_cx, g_cy = centers["G"]
-    g_bar_x = int(np.clip(g_cx + g_radius + pad, 14, max(14, w - 14 - group_w)))
-    g_bar_y = int(np.clip(g_cy + 14, 24, max(24, h - 24 - group_h_global)))
-    _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "GLOBAL S/T", temporal_bands=g_t, centroid=g_ctr)
-    g_wl_x = int(np.clip(g_cx - g_radius - pad - 10, 10, max(10, w - 10 - 10)))
-    g_wl_y = int(np.clip(g_cy + 14, 24, max(24, h - 24 - 68)))
+    g_bar_x = int(np.clip(g_cx + g_radius + pad + 12, 14, max(14, w - 14 - group_w)))
+    g_bar_y = int(np.clip(g_cy + 14 - 15, 24, max(24, h - 24 - group_h_global)))
+    _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "", temporal_bands=g_t, centroid=g_ctr)
+    g_wl_x = int(np.clip(g_cx - g_radius - pad - 10 - 12, 10, max(10, w - 10 - 10)))
+    g_wl_y = int(np.clip(g_cy + 14 - 15, 24, max(24, h - 24 - 68)))
     _draw_vertical_slider(out, g_wl_x, g_wl_y, g_wl, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
     return out
 
@@ -805,6 +938,7 @@ def make_display_frame(
     flow_overlay,
     spectrum_overlay,
     axial_flow=False,
+    lbp_data=None,
 ):
     if mode_name == "filtered":
         # Show pre-threshold filtered signal in filtered mode.
@@ -859,6 +993,8 @@ def make_display_frame(
                                         )
         # Adaptive arrow: quality-weighted blend of fast+slow, drawn on its own ring.
         out = draw_adaptive_flow_arrow(out, analysis.get("flow_data"), axial=axial_flow)
+        # Per-quadrant LBP triangles: same visual language as the global triangle.
+        out = draw_quadrant_lbp_triangles(out, lbp_data)
 
     if spectrum_overlay:
         out = draw_pyramid_texture_bars(out, analysis.get("pyramid_data"), analysis.get("wavelength_data"))
@@ -1282,6 +1418,7 @@ def main():
                 flow_mode,
                 show_spectrum_overlay,
                 axial_flow=flow_axial_mode,
+                lbp_data=analysis.get("lbp_data") if analysis else None,
             )
             display = draw_status_hud(
                 display,

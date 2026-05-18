@@ -101,8 +101,20 @@ class WaveAnalyzer:
         }
         self.wl_use_median = True
         # Fixed-length median pre-filter + 2 Hz IIR lowpass for wavelength jitter removal.
-        self._wl_history = deque(maxlen=7)
+        self._wl_history = deque(maxlen=5)
         self._wl_lp_state = None  # IIR lowpass state (None = uninitialised)
+        self._wl_q_history = {
+            "UL": deque(maxlen=5),
+            "UR": deque(maxlen=5),
+            "LL": deque(maxlen=5),
+            "LR": deque(maxlen=5),
+        }
+        self._wl_q_lp_state = {
+            "UL": None,
+            "UR": None,
+            "LL": None,
+            "LR": None,
+        }
         self.prev_pyramid_bands = None
         self.pyramid_temporal_activity = 0.0
         self.pyramid_temporal_band_activity = [0.0] * self.PYRAMID_BAND_COUNT
@@ -154,6 +166,18 @@ class WaveAnalyzer:
         self._flow_update_interval_smooth = 1.0
         self.flow_update_interval_min = 1
         self.flow_update_interval_max = 6
+        self._flow_dir_history = {
+            "fast": deque(maxlen=5),
+            "slow": deque(maxlen=5),
+            "blend": deque(maxlen=5),
+            "adaptive": deque(maxlen=5),
+        }
+        self._flow_dir_unwrapped = {
+            "fast": None,
+            "slow": None,
+            "blend": None,
+            "adaptive": None,
+        }
         self.flow_direction_target_deg = 225.0
         self.flow_direction_tolerance_deg = 45.0
         self.flow_direction_stripe_count = 5
@@ -713,43 +737,49 @@ class WaveAnalyzer:
         new_h = max(16, int(round(h * scale)))
         return cv2.resize(gray_img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    def _analyze_lbp_texture(self, gray_img):
-        """Dense LBP summary for local roughness and micro-texture stability."""
-        zero_result = {
-            "lbp_mean": 0.0,
-            "lbp_std": 0.0,
-            "lbp_entropy": 0.0,
-            "lbp_uniform_ratio": 0.0,
-            "lbp_roughness": 0.0,
-            "lbp_dominant_code": 0,
-            "lbp_dominant_ratio": 0.0,
-            "lbp_roughness_entropy": 0.0,
-            "lbp_uniform_rough_entr": 0.0,
-            "lbp_histogram_16": [0.0] * 16,
-        }
+    @staticmethod
+    def _compute_lbp_codes(gray_img, max_dim=320):
+        """Resize *gray_img* and compute the 8-bit LBP codes array (H×W uint8).
+
+        This is the expensive O(pixels) step.  Returns ``None`` when the
+        image is too small or empty.  Split out so callers that need both
+        global and per-quadrant statistics can run this once and slice the
+        resulting array, calling :meth:`_lbp_stats_from_codes` cheaply on
+        each region.
+        """
         if gray_img is None or gray_img.size == 0:
-            return zero_result
-
-        view = self._resize_for_texture_analysis(gray_img, max_dim=320)
+            return None
+        view = WaveAnalyzer._resize_for_texture_analysis(gray_img, max_dim=max_dim)
         if min(view.shape[:2]) < 3:
-            return zero_result
-
+            return None
         padded = np.pad(view.astype(np.uint8), 1, mode="edge")
         center = padded[1:-1, 1:-1]
         neighbors = [
-            padded[:-2, :-2],
-            padded[:-2, 1:-1],
-            padded[:-2, 2:],
-            padded[1:-1, 2:],
-            padded[2:, 2:],
-            padded[2:, 1:-1],
-            padded[2:, :-2],
-            padded[1:-1, :-2],
+            padded[:-2, :-2], padded[:-2, 1:-1], padded[:-2, 2:],
+            padded[1:-1, 2:], padded[2:, 2:], padded[2:, 1:-1],
+            padded[2:, :-2], padded[1:-1, :-2],
         ]
-
         codes = np.zeros_like(center, dtype=np.uint8)
         for bit, neighbor in enumerate(neighbors):
             codes |= ((neighbor >= center).astype(np.uint8) << bit)
+        return codes
+
+    @staticmethod
+    def _lbp_stats_from_codes(codes):
+        """Compute all LBP statistics from a pre-computed codes array.
+
+        Accepts any 2-D uint8 array — the full frame or a spatial slice for
+        a quadrant.  This is cheap compared with code computation and can be
+        called multiple times on sub-regions of the same codes array.
+        """
+        if codes is None or codes.size == 0:
+            return {
+                "lbp_mean": 0.0, "lbp_std": 0.0, "lbp_entropy": 0.0,
+                "lbp_uniform_ratio": 0.0, "lbp_roughness": 0.0,
+                "lbp_dominant_code": 0, "lbp_dominant_ratio": 0.0,
+                "lbp_roughness_entropy": 0.0, "lbp_uniform_rough_entr": 0.0,
+                "lbp_histogram_16": [0.0] * 16,
+            }
 
         hist256 = np.bincount(codes.ravel(), minlength=256).astype(np.float32)
         hist_sum = float(np.sum(hist256)) + 1e-9
@@ -759,22 +789,27 @@ class WaveAnalyzer:
 
         bits = ((codes[..., None] >> np.arange(8, dtype=np.uint8)) & 1).astype(np.uint8)
         transitions = np.sum(bits != np.roll(bits, -1, axis=2), axis=2)
-        uniform_ratio = float(np.mean(transitions <= 2))
+        uniform_ratio_raw = float(np.mean(transitions <= 2))
 
         dominant_code = int(np.argmax(hist256))
         dominant_ratio = float(hist256[dominant_code])
-        entropy = float(-np.sum(hist256 * np.log2(hist256 + 1e-9)))
+        entropy_raw = float(-np.sum(hist256 * np.log2(hist256 + 1e-9)))
         lbp_mean = float(np.mean(codes)) / 255.0
         lbp_std = float(np.std(codes)) / 255.0
-        roughness = float(1.0 - dominant_ratio)
+        roughness_raw = float(1.0 - dominant_ratio)
 
-        # Compound metrics for synth control.
-        # Normalize entropy to [0, 1] range (entropy max ~8 bits).
-        entropy_norm = entropy / 8.0
-        # Signed difference: +1 = roughness dominates, -1 = entropy dominates.
+        # Stretch low-contrast ranges so values below ~0.3 become more expressive.
+        # Applies to all three base measures before compound metrics are derived.
+        def _stretch01(v):
+            return float(np.clip((v - 0.3) / 0.7, 0.0, 1.0))
+
+        roughness = _stretch01(roughness_raw)
+        uniform_ratio = _stretch01(uniform_ratio_raw)
+        entropy_norm = _stretch01(entropy_raw / 8.0)
+        entropy = entropy_norm * 8.0
+
         roughness_entropy_ratio = roughness - entropy_norm
-        rough_entr_avg = (roughness + entropy_norm) / 2.0
-        uniform_rough_entr = uniform_ratio / (rough_entr_avg + 1e-9)
+        uniform_rough_entr = uniform_ratio - (roughness + entropy_norm) / 2.0
 
         return {
             "lbp_mean": lbp_mean,
@@ -788,6 +823,10 @@ class WaveAnalyzer:
             "lbp_uniform_rough_entr": uniform_rough_entr,
             "lbp_histogram_16": [float(v) for v in hist16],
         }
+
+    def _analyze_lbp_texture(self, gray_img):
+        """Dense LBP summary for local roughness and micro-texture stability."""
+        return self._lbp_stats_from_codes(self._compute_lbp_codes(gray_img))
 
     def _analyze_gabor_texture(self, gray_img):
         """Small Gabor bank for oriented wave/ripple energy."""
@@ -1389,6 +1428,23 @@ class WaveAnalyzer:
             "best_stripe_support": best_stripe_support,
         }
 
+    def _median_filter_direction_deg(self, key, direction_deg):
+        """Median filter directional angle in degrees with unwrap to avoid 0/360 jumps."""
+        deg = float(direction_deg) % 360.0
+        prev = self._flow_dir_unwrapped.get(key)
+        unwrapped = deg
+        if prev is not None:
+            while (unwrapped - prev) > 180.0:
+                unwrapped -= 360.0
+            while (unwrapped - prev) < -180.0:
+                unwrapped += 360.0
+
+        hist = self._flow_dir_history[key]
+        hist.append(unwrapped)
+        med = float(np.median(np.asarray(hist, dtype=np.float32)))
+        self._flow_dir_unwrapped[key] = med
+        return med % 360.0
+
     def _analyze_flow(self, roi_gray, temporal_centroid_hz=0.0):
         """Multi-scale optical flow: fast scale (adjacent frames) + slow scale (N frames apart)."""
         flow_data = dict(self.last_flow_metrics)
@@ -1519,7 +1575,6 @@ class WaveAnalyzer:
             sq = 0.0
             src_label = "fast"
 
-        self.last_direction = direction
         flow_data.update({
             "direction_deg": direction,
             "speed_norm": speed_norm,
@@ -1542,6 +1597,14 @@ class WaveAnalyzer:
             "adaptive_coherence": coherence,
             "adaptive_activity": activity,
         })
+
+        # Median-filter directional outputs (size=5) for display/OSC stability.
+        flow_data["fast_direction_deg"] = self._median_filter_direction_deg("fast", flow_data["fast_direction_deg"])
+        if slow_m is not None and slow_m["activity"] > 0.0:
+            flow_data["slow_direction_deg"] = self._median_filter_direction_deg("slow", flow_data["slow_direction_deg"])
+        flow_data["direction_deg"] = self._median_filter_direction_deg("blend", flow_data["direction_deg"])
+        flow_data["adaptive_direction_deg"] = self._median_filter_direction_deg("adaptive", flow_data["adaptive_direction_deg"])
+        self.last_direction = flow_data["direction_deg"]
 
         if self.flow_axial_mode:
             for _akey in ("fast_direction_deg", "slow_direction_deg", "direction_deg"):
@@ -1678,7 +1741,22 @@ class WaveAnalyzer:
 
         if self.enable_lbp_analysis:
             t_lbp = perf_counter()
-            lbp_data = self._analyze_lbp_texture(blur)
+            # Compute LBP codes once for the full blur image (the expensive step).
+            # Slicing the codes array for each quadrant is zero-copy; _lbp_stats_from_codes
+            # (histograms + transitions) is cheap and runs 5× on small sub-arrays.
+            _full_codes = WaveAnalyzer._compute_lbp_codes(blur)
+            lbp_data = WaveAnalyzer._lbp_stats_from_codes(_full_codes)
+            if _full_codes is not None:
+                _ch, _cw = _full_codes.shape[:2]
+                _hm, _wm = _ch // 2, _cw // 2
+                lbp_data["quadrants"] = {
+                    "UL": WaveAnalyzer._lbp_stats_from_codes(_full_codes[:_hm, :_wm]),
+                    "UR": WaveAnalyzer._lbp_stats_from_codes(_full_codes[:_hm, _wm:]),
+                    "LL": WaveAnalyzer._lbp_stats_from_codes(_full_codes[_hm:, :_wm]),
+                    "LR": WaveAnalyzer._lbp_stats_from_codes(_full_codes[_hm:, _wm:]),
+                }
+            else:
+                lbp_data["quadrants"] = {}
             timers["lbp_ms"] = (perf_counter() - t_lbp) * 1000.0
         else:
             lbp_data = {
@@ -1692,6 +1770,7 @@ class WaveAnalyzer:
                 "lbp_roughness_entropy": 0.0,
                 "lbp_uniform_rough_entr": 0.0,
                 "lbp_histogram_16": [0.0] * 16,
+                "quadrants": {},
             }
             timers["lbp_ms"] = 0.0
 
@@ -1765,7 +1844,7 @@ class WaveAnalyzer:
             )
         wavelength_data["quadrants"] = quadrant_wavelengths
 
-        # Median pre-filter (length 7) then 2 Hz IIR lowpass to remove jitter.
+        # Median pre-filter (length 5) then 2 Hz IIR lowpass to remove jitter.
         _raw_wl = wavelength_data.get("wavelength_px")
         if _raw_wl is not None:
             self._wl_history.append(float(_raw_wl))
@@ -1777,6 +1856,23 @@ class WaveAnalyzer:
             else:
                 self._wl_lp_state = _lp_alpha * _median_wl + (1.0 - _lp_alpha) * self._wl_lp_state
             wavelength_data["wavelength_px"] = self._wl_lp_state
+
+        # Apply the same median+IIR smoothing per quadrant so displays/OSC use
+        # stable local wavelength values rather than raw frame-to-frame estimates.
+        for _q in ("UL", "UR", "LL", "LR"):
+            _q_item = quadrant_wavelengths.get(_q)
+            if not _q_item:
+                continue
+            _q_raw = _q_item.get("wavelength_px")
+            if _q_raw is not None:
+                self._wl_q_history[_q].append(float(_q_raw))
+            if self._wl_q_history[_q]:
+                _q_median = float(np.median(list(self._wl_q_history[_q])))
+                if self._wl_q_lp_state[_q] is None:
+                    self._wl_q_lp_state[_q] = _q_median
+                else:
+                    self._wl_q_lp_state[_q] = _lp_alpha * _q_median + (1.0 - _lp_alpha) * self._wl_q_lp_state[_q]
+                _q_item["wavelength_px"] = self._wl_q_lp_state[_q]
 
         self.last_wavelength = wavelength_data["wavelength_px"]
         self.last_wavelength_metrics = dict(wavelength_data)
