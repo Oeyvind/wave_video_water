@@ -233,6 +233,10 @@ class WaveAnalyzer:
         # Optional texture descriptor stages.
         self.enable_lbp_analysis = True
         self.enable_gabor_analysis = False
+        # LBP triangle compound mapping parameters.
+        self.lbp_order_center = 0.66
+        self.lbp_order_width = 0.50
+        self.lbp_chaos_entropy_exp = 0.60
 
         history_len = int(self.fps * 4.0)
         self.slit_history = [deque(maxlen=history_len) for _ in range(self.slit_count)]
@@ -282,6 +286,15 @@ class WaveAnalyzer:
             self.prev_contour_boxes = []
             self.prev_contour_centroids = []
             self.last_static_contours = []
+
+    def set_lbp_compound_tuning(self, order_center=None, order_width=None, chaos_entropy_exp=None):
+        """Tune LBP smooth/order/chaos corner mapping parameters."""
+        if order_center is not None:
+            self.lbp_order_center = float(np.clip(float(order_center), 0.0, 1.0))
+        if order_width is not None:
+            self.lbp_order_width = float(np.clip(float(order_width), 0.05, 1.0))
+        if chaos_entropy_exp is not None:
+            self.lbp_chaos_entropy_exp = float(np.clip(float(chaos_entropy_exp), 0.5, 4.0))
 
     def _apply_temporal_difference_filter(self, gray_img):
         if self.prev_temporal_diff_frame is None or self.prev_temporal_diff_frame.shape != gray_img.shape:
@@ -764,8 +777,7 @@ class WaveAnalyzer:
             codes |= ((neighbor >= center).astype(np.uint8) << bit)
         return codes
 
-    @staticmethod
-    def _lbp_stats_from_codes(codes):
+    def _lbp_stats_from_codes(self, codes):
         """Compute all LBP statistics from a pre-computed codes array.
 
         Accepts any 2-D uint8 array — the full frame or a spatial slice for
@@ -777,7 +789,7 @@ class WaveAnalyzer:
                 "lbp_mean": 0.0, "lbp_std": 0.0, "lbp_entropy": 0.0,
                 "lbp_uniform_ratio": 0.0, "lbp_roughness": 0.0,
                 "lbp_dominant_code": 0, "lbp_dominant_ratio": 0.0,
-                "lbp_roughness_entropy": 0.0, "lbp_uniform_rough_entr": 0.0,
+                "lbp_smooth": 0.0, "lbp_order": 0.0, "lbp_chaos": 0.0,
                 "lbp_histogram_16": [0.0] * 16,
             }
 
@@ -808,8 +820,16 @@ class WaveAnalyzer:
         entropy_norm = _stretch01(entropy_raw / 8.0)
         entropy = entropy_norm * 8.0
 
-        roughness_entropy_ratio = roughness - entropy_norm
-        uniform_rough_entr = uniform_ratio - (roughness + entropy_norm) / 2.0
+        # Triangle corner activations (smooth/order/chaos), then normalize.
+        roughness_mid = float(max(0.0, 1.0 - (abs(roughness - self.lbp_order_center) / self.lbp_order_width)))
+        chaos_entropy = float(np.clip(entropy_norm, 0.0, 1.0) ** self.lbp_chaos_entropy_exp)
+        smooth_raw = float(uniform_ratio * (1.0 - roughness) * (1.0 - entropy_norm))
+        order_raw = float(uniform_ratio * (1.0 - entropy_norm) * roughness_mid)
+        chaos_raw = float(chaos_entropy * roughness * (1.0 - uniform_ratio))
+        sum_raw = smooth_raw + order_raw + chaos_raw + 1e-9
+        smooth = smooth_raw / sum_raw
+        order = order_raw / sum_raw
+        chaos = chaos_raw / sum_raw
 
         return {
             "lbp_mean": lbp_mean,
@@ -819,8 +839,9 @@ class WaveAnalyzer:
             "lbp_roughness": roughness,
             "lbp_dominant_code": dominant_code,
             "lbp_dominant_ratio": dominant_ratio,
-            "lbp_roughness_entropy": roughness_entropy_ratio,
-            "lbp_uniform_rough_entr": uniform_rough_entr,
+            "lbp_smooth": float(smooth),
+            "lbp_order": float(order),
+            "lbp_chaos": float(chaos),
             "lbp_histogram_16": [float(v) for v in hist16],
         }
 
@@ -1745,15 +1766,15 @@ class WaveAnalyzer:
             # Slicing the codes array for each quadrant is zero-copy; _lbp_stats_from_codes
             # (histograms + transitions) is cheap and runs 5× on small sub-arrays.
             _full_codes = WaveAnalyzer._compute_lbp_codes(blur)
-            lbp_data = WaveAnalyzer._lbp_stats_from_codes(_full_codes)
+            lbp_data = self._lbp_stats_from_codes(_full_codes)
             if _full_codes is not None:
                 _ch, _cw = _full_codes.shape[:2]
                 _hm, _wm = _ch // 2, _cw // 2
                 lbp_data["quadrants"] = {
-                    "UL": WaveAnalyzer._lbp_stats_from_codes(_full_codes[:_hm, :_wm]),
-                    "UR": WaveAnalyzer._lbp_stats_from_codes(_full_codes[:_hm, _wm:]),
-                    "LL": WaveAnalyzer._lbp_stats_from_codes(_full_codes[_hm:, :_wm]),
-                    "LR": WaveAnalyzer._lbp_stats_from_codes(_full_codes[_hm:, _wm:]),
+                    "UL": self._lbp_stats_from_codes(_full_codes[:_hm, :_wm]),
+                    "UR": self._lbp_stats_from_codes(_full_codes[:_hm, _wm:]),
+                    "LL": self._lbp_stats_from_codes(_full_codes[_hm:, :_wm]),
+                    "LR": self._lbp_stats_from_codes(_full_codes[_hm:, _wm:]),
                 }
             else:
                 lbp_data["quadrants"] = {}
@@ -1767,8 +1788,9 @@ class WaveAnalyzer:
                 "lbp_roughness": 0.0,
                 "lbp_dominant_code": 0,
                 "lbp_dominant_ratio": 0.0,
-                "lbp_roughness_entropy": 0.0,
-                "lbp_uniform_rough_entr": 0.0,
+                "lbp_smooth": 0.0,
+                "lbp_order": 0.0,
+                "lbp_chaos": 0.0,
                 "lbp_histogram_16": [0.0] * 16,
                 "quadrants": {},
             }

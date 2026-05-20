@@ -1,4 +1,10 @@
 
+* We are not using contours for anything are we?
+  - how could they be useful?
+
+* Make quadrants relate to mask
+  - keep positions of gui displays, but mask the image array and divide it into quadrants
+
 * Test contour method across all videos, 
   - we wante contours detected where we can visually see them in the image
   - some videos, like Nidelv_2025_05_2.mp4 would not detect any contours

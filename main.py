@@ -299,6 +299,18 @@ def draw_status_hud(
         f"[V] flow: {switches['flow_overlay']}",
         f"[X] axial flow: {'on' if switches['flow_axial_mode'] else 'off'}",
         f"[J] LBP analysis: {'on' if switches['lbp_analysis'] else 'off'}",
+        (
+            "[,]/[.] order center: "
+            f"{switches['lbp_order_center']:.2f}"
+        ),
+        (
+            "[-]/['] order width: "
+            f"{switches['lbp_order_width']:.2f}"
+        ),
+        (
+            "[+]/[\\] chaos exp: "
+            f"{switches['lbp_chaos_entropy_exp']:.2f}"
+        ),
         f"[F] flow detail: {switches['flow_detail_mode']}",
         f"[I] fast interval auto: {'on' if switches['flow_update_auto'] else 'off'}",
         f"[M] show mask: {'on' if switches['show_mask'] else 'off'}",
@@ -571,6 +583,7 @@ def _draw_lbp_triangle_widget(
     tri_h,
     show_title=False,
     show_semantic=False,
+    corner_labels=None,
     text_scale=0.26,
 ):
     """Draw one LBP triangle widget at top-left (tx, ty)."""
@@ -588,8 +601,9 @@ def _draw_lbp_triangle_widget(
     roughness = float(lbp.get("lbp_roughness", 0.0))
     entropy = float(lbp.get("lbp_entropy", 0.0))
     uniform = float(lbp.get("lbp_uniform_ratio", 0.0))
-    rough_entr = float(lbp.get("lbp_roughness_entropy", 0.0))
-    unif_rough_entr = float(lbp.get("lbp_uniform_rough_entr", 0.0))
+    smooth = float(lbp.get("lbp_smooth", 0.0))
+    order = float(lbp.get("lbp_order", 0.0))
+    chaos = float(lbp.get("lbp_chaos", 0.0))
 
     p_tl = (tx, ty)
     p_tr = (tx + tri_s, ty)
@@ -620,12 +634,15 @@ def _draw_lbp_triangle_widget(
         bvx = p_tc[0] - vbar_w // 2
         cv2.rectangle(out, (bvx, p_tc[1]), (bvx + vbar_w, p_tc[1] + u_len), (60, 170, 210), -1)
 
-    v = float(np.clip((unif_rough_entr + 1.0) / 2.0, 0.0, 1.0))
-    hh = float(np.clip((rough_entr * 5.0 + 1.0) / 2.0, 0.0, 1.0))
-    dot_y = ty + int(v * tri_h)
-    left_x = tx + int(v * half_s)
-    right_x = tx + tri_s - int(v * half_s)
-    dot_x = left_x + int(hh * (right_x - left_x))
+    bary_sum = smooth + order + chaos
+    if bary_sum <= 1e-6:
+        smooth_n = order_n = chaos_n = 1.0 / 3.0
+    else:
+        smooth_n = smooth / bary_sum
+        order_n = order / bary_sum
+        chaos_n = chaos / bary_sum
+    dot_x = int(round(chaos_n * p_tl[0] + order_n * p_tr[0] + smooth_n * p_bot[0]))
+    dot_y = int(round(chaos_n * p_tl[1] + order_n * p_tr[1] + smooth_n * p_bot[1]))
     dot_r = max(2, int(round(4.0 * tri_h / 100.0)))
     cv2.circle(out, (dot_x, dot_y), dot_r, (0, 200, 80), -1, cv2.LINE_AA)
     cv2.circle(out, (dot_x, dot_y), dot_r, (0, 255, 120), 1, cv2.LINE_AA)
@@ -646,6 +663,14 @@ def _draw_lbp_triangle_widget(
         s_lbl = "smooth"
         (slw, _), _ = cv2.getTextSize(s_lbl, f, fs, 1)
         cv2.putText(out, s_lbl, (p_bot[0] - slw // 2, p_bot[1] + 12), f, fs, (200, 200, 180), 1, cv2.LINE_AA)
+    elif corner_labels is not None and len(corner_labels) == 3:
+        c_lbl, o_lbl, s_lbl = [str(v) for v in corner_labels]
+        cfs = fs + 0.04
+        cv2.putText(out, c_lbl, (p_tl[0] - 9, p_tl[1]), f, cfs, (200, 200, 180), 1, cv2.LINE_AA)
+        (olw, _), _ = cv2.getTextSize(o_lbl, f, cfs, 1)
+        cv2.putText(out, o_lbl, (p_tr[0] - olw + 9, p_tr[1]), f, cfs, (200, 200, 180), 1, cv2.LINE_AA)
+        (slw, _), _ = cv2.getTextSize(s_lbl, f, cfs, 1)
+        cv2.putText(out, s_lbl, (p_bot[0] - slw // 2, p_bot[1] + 10), f, cfs, (200, 200, 180), 1, cv2.LINE_AA)
 
     lbl_y = p_tc[1] + bar_thick + max(7, int(round(9.0 * tri_h / 100.0)))
     e_lbl = f"E {entropy:.2f}"
@@ -711,6 +736,7 @@ def draw_quadrant_lbp_triangles(frame, lbp_data):
             tri_h=tri_h,
             show_title=False,
             show_semantic=False,
+            corner_labels=("C", "O", "S"),
             text_scale=0.22,
         )
 
@@ -937,6 +963,7 @@ def make_display_frame(
     contour_overlay,
     flow_overlay,
     spectrum_overlay,
+    texture_overlay,
     axial_flow=False,
     lbp_data=None,
 ):
@@ -993,8 +1020,9 @@ def make_display_frame(
                                         )
         # Adaptive arrow: quality-weighted blend of fast+slow, drawn on its own ring.
         out = draw_adaptive_flow_arrow(out, analysis.get("flow_data"), axial=axial_flow)
-        # Per-quadrant LBP triangles: same visual language as the global triangle.
-        out = draw_quadrant_lbp_triangles(out, lbp_data)
+        if texture_overlay:
+            # Per-quadrant LBP triangles: shown with the texture overlay toggle (W).
+            out = draw_quadrant_lbp_triangles(out, lbp_data)
 
     if spectrum_overlay:
         out = draw_pyramid_texture_bars(out, analysis.get("pyramid_data"), analysis.get("wavelength_data"))
@@ -1389,6 +1417,9 @@ def main():
             "contour_motion_filter": analyzer.enable_contour_motion_filter,
             "static_contours": analyzer.show_static_contours,
             "lbp_analysis": analyzer.enable_lbp_analysis,
+            "lbp_order_center": float(getattr(analyzer, "lbp_order_center", 0.5)),
+            "lbp_order_width": float(getattr(analyzer, "lbp_order_width", 0.5)),
+            "lbp_chaos_entropy_exp": float(getattr(analyzer, "lbp_chaos_entropy_exp", 1.0)),
             "contour_motion_threshold_label": (
                 "off"
                 if float(analyzer.contour_motion_threshold_px) <= 0.0
@@ -1417,6 +1448,7 @@ def main():
                 show_contour_overlay,
                 flow_mode,
                 show_spectrum_overlay,
+                show_texture_overlay,
                 axial_flow=flow_axial_mode,
                 lbp_data=analysis.get("lbp_data") if analysis else None,
             )
@@ -1547,6 +1579,18 @@ def main():
         if key == ord("j"):
             analyzer.enable_lbp_analysis = not analyzer.enable_lbp_analysis
             profile_windows["lbp_ms"].clear()
+        if key == ord(","):
+            analyzer.set_lbp_compound_tuning(order_center=analyzer.lbp_order_center - 0.02)
+        if key == ord("."):
+            analyzer.set_lbp_compound_tuning(order_center=analyzer.lbp_order_center + 0.02)
+        if key == ord("-"):
+            analyzer.set_lbp_compound_tuning(order_width=analyzer.lbp_order_width - 0.02)
+        if key == ord("'"):
+            analyzer.set_lbp_compound_tuning(order_width=analyzer.lbp_order_width + 0.02)
+        if key == ord("+"):
+            analyzer.set_lbp_compound_tuning(chaos_entropy_exp=analyzer.lbp_chaos_entropy_exp - 0.05)
+        if key == ord("\\"):
+            analyzer.set_lbp_compound_tuning(chaos_entropy_exp=analyzer.lbp_chaos_entropy_exp + 0.05)
         if key == ord("f"):
             next_idx = (flow_detail_modes.index(flow_detail_mode) + 1) % len(flow_detail_modes)
             flow_detail_mode = flow_detail_modes[next_idx]
