@@ -41,19 +41,27 @@ def send_fused_wave_data(analysis):
     pyr = analysis.get("pyramid_data", {}) or {}
     g_s = pyr.get("global_bands", [0.0, 0.0, 0.0])
     g_t = pyr.get("temporal_band_activity", [0.0, 0.0, 0.0])
+    g_s_ctr = float(pyr.get("scale_centroid_renorm", pyr.get("scale_centroid", 0.0)))
+    g_t_ctr = float(pyr.get("temporal_scale_centroid", 0.0))
     for i, v in enumerate(g_s):
         client.send_message(f"/wave/pyramid/global/s{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
     for i, v in enumerate(g_t):
         client.send_message(f"/wave/pyramid/global/t{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
+    client.send_message("/wave/pyramid/global/centroid_s", float(min(max(g_s_ctr, 0.0), 1.0)))
+    client.send_message("/wave/pyramid/global/centroid_t", float(min(max(g_t_ctr, 0.0), 1.0)))
 
     q_s = pyr.get("quadrant_bands", {}) if isinstance(pyr, dict) else {}
     q_t = pyr.get("quadrant_temporal_bands", {}) if isinstance(pyr, dict) else {}
+    q_s_ctr = pyr.get("quadrant_scale_centroids_renorm", pyr.get("quadrant_scale_centroids", {})) if isinstance(pyr, dict) else {}
+    q_t_ctr = pyr.get("quadrant_temporal_scale_centroids", {}) if isinstance(pyr, dict) else {}
     for q in ("UL", "UR", "LL", "LR"):
         q_key = q.lower()
         for i, v in enumerate(q_s.get(q, [0.0, 0.0, 0.0])):
             client.send_message(f"/wave/pyramid/{q_key}/s{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
         for i, v in enumerate(q_t.get(q, [0.0, 0.0, 0.0])):
             client.send_message(f"/wave/pyramid/{q_key}/t{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
+        client.send_message(f"/wave/pyramid/{q_key}/centroid_s", float(min(max(float(q_s_ctr.get(q, 0.0)), 0.0), 1.0)))
+        client.send_message(f"/wave/pyramid/{q_key}/centroid_t", float(min(max(float(q_t_ctr.get(q, 0.0)), 0.0), 1.0)))
 
     # Optional debug channels for inspectability in downstream tools.
     client.send_message("/wave/raw/frequency_hz", float(raw["wave_frequency_hz"]))

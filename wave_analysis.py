@@ -125,6 +125,15 @@ class WaveAnalyzer:
         self.pyramid_max_dim = 640
         self.pyramid_update_interval = 2
         self._last_pyramid_data = None
+        # Centroid renormalization bounds (derived from clip-set percentiles).
+        # Keep raw centroid for flow adaptation and expose renormalized variants
+        # for display/OSC so the visible/control range spans 0..1 more fully.
+        self.pyramid_centroid_clip = {
+            "global_spatial": (0.2, 0.8),
+            "global_temporal": (0.2, 0.8),
+            "quadrant_spatial": (0.2, 0.8),
+            "quadrant_temporal": (0.2, 0.8),
+        }
         self.last_flow_metrics = {
             "direction_deg": 0.0,
             "speed_norm": 0.0,
@@ -982,14 +991,53 @@ class WaveAnalyzer:
             quadrant_temporal_bands[qlabel] = new_qt
             self.prev_quadrant_bands[qlabel] = qcurr
 
+        def _safe_weighted_centroid(vals):
+            arr = np.asarray(vals, dtype=np.float32)
+            total = float(np.sum(arr))
+            if total <= 1e-9:
+                return 0.0
+            denom = float(max(1, band_count - 1))
+            return float(np.dot(np.arange(band_count, dtype=np.float32), arr) / (total * denom))
+
+        def _renorm01(val, lo, hi):
+            span = max(1e-6, float(hi) - float(lo))
+            return float(np.clip((float(val) - float(lo)) / span, 0.0, 1.0))
+
         quadrant_scale_centroids = {}
+        quadrant_scale_centroids_renorm = {}
+        quadrant_temporal_scale_centroids_raw = {}
+        quadrant_temporal_scale_centroids = {}
         for qlabel, qbands in quadrant_bands.items():
             qarr = np.asarray(qbands, dtype=np.float32)
             denom = float(max(1, band_count - 1))
-            quadrant_scale_centroids[qlabel] = float(np.dot(np.arange(band_count, dtype=np.float32), qarr) / denom)
+            q_spatial_raw = float(np.dot(np.arange(band_count, dtype=np.float32), qarr) / denom)
+            q_temporal_raw = _safe_weighted_centroid(quadrant_temporal_bands.get(qlabel, [0.0] * band_count))
+            quadrant_scale_centroids[qlabel] = q_spatial_raw
+            quadrant_scale_centroids_renorm[qlabel] = _renorm01(
+                q_spatial_raw,
+                self.pyramid_centroid_clip["quadrant_spatial"][0],
+                self.pyramid_centroid_clip["quadrant_spatial"][1],
+            )
+            quadrant_temporal_scale_centroids_raw[qlabel] = q_temporal_raw
+            quadrant_temporal_scale_centroids[qlabel] = _renorm01(
+                q_temporal_raw,
+                self.pyramid_centroid_clip["quadrant_temporal"][0],
+                self.pyramid_centroid_clip["quadrant_temporal"][1],
+            )
 
         dominant_idx = int(np.argmax(np.asarray(global_bands, dtype=np.float32)))
         centroid = float(np.dot(np.arange(band_count, dtype=np.float32), np.asarray(global_bands, dtype=np.float32))) / float(max(1, band_count - 1))
+        centroid_renorm = _renorm01(
+            centroid,
+            self.pyramid_centroid_clip["global_spatial"][0],
+            self.pyramid_centroid_clip["global_spatial"][1],
+        )
+        temporal_centroid_raw = _safe_weighted_centroid(self.pyramid_temporal_band_activity)
+        temporal_centroid = _renorm01(
+            temporal_centroid_raw,
+            self.pyramid_centroid_clip["global_temporal"][0],
+            self.pyramid_centroid_clip["global_temporal"][1],
+        )
         band_labels = ["yellow-wide", "coarse", "extra-coarse"]
 
         out = {
@@ -999,10 +1047,16 @@ class WaveAnalyzer:
             "dominant_scale_index": dominant_idx,
             "dominant_scale_label": band_labels[dominant_idx],
             "scale_centroid": centroid,
+            "scale_centroid_renorm": centroid_renorm,
             "temporal_activity": float(self.pyramid_temporal_activity),
             "temporal_band_activity": list(self.pyramid_temporal_band_activity),
+            "temporal_scale_centroid_raw": temporal_centroid_raw,
+            "temporal_scale_centroid": temporal_centroid,
             "quadrant_temporal_bands": quadrant_temporal_bands,
             "quadrant_scale_centroids": quadrant_scale_centroids,
+            "quadrant_scale_centroids_renorm": quadrant_scale_centroids_renorm,
+            "quadrant_temporal_scale_centroids_raw": quadrant_temporal_scale_centroids_raw,
+            "quadrant_temporal_scale_centroids": quadrant_temporal_scale_centroids,
         }
         self._last_pyramid_data = out
         return out

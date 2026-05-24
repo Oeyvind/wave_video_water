@@ -814,7 +814,8 @@ def _rate_hz_to_color(rate_hz, min_hz=0.5, max_hz=30.0):
     return _centroid_to_color(norm)
 
 
-def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=4, temporal_bands=None, centroid=None, temporal_shift_y=0):
+def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=4,
+    temporal_bands=None, centroid=None, temporal_centroid=None, temporal_shift_y=0):
     bands = list(bands) if bands is not None else [0.0] * len(_PYRAMID_BAND_COLORS)
     if len(bands) < len(_PYRAMID_BAND_COLORS):
         bands = bands + [0.0] * (len(_PYRAMID_BAND_COLORS) - len(bands))
@@ -874,10 +875,13 @@ def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=
             cv2.rectangle(frame, (bx0, by0), (bx1, t_base_y), dim_c, -1)
             cv2.rectangle(frame, (bx0, t_y0), (bx1, t_base_y), (120, 120, 120), 1)
 
-        # Temporal centroid rail — weighted mean of temporal band indices
-        t_arr = np.asarray(tvals[:bar_count], dtype=np.float32)
-        t_total = float(np.sum(t_arr)) + 1e-9
-        t_centroid = float(np.dot(np.arange(bar_count, dtype=np.float32), t_arr) / (t_total * (bar_count - 1)))
+        # Temporal centroid rail uses provided value (renormalized) when available.
+        if temporal_centroid is None:
+            t_arr = np.asarray(tvals[:bar_count], dtype=np.float32)
+            t_total = float(np.sum(t_arr)) + 1e-9
+            t_centroid = float(np.dot(np.arange(bar_count, dtype=np.float32), t_arr) / (t_total * (bar_count - 1)))
+        else:
+            t_centroid = float(np.clip(temporal_centroid, 0.0, 1.0))
         tc_y0 = t_base_y + 6
         tc_h = centroid_h
         tc_mid = tc_y0 + (tc_h // 2)
@@ -902,10 +906,12 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     h, w = out.shape[:2]
     g = _scale_pyramid_vals(pyramid_data.get("global_bands", [0.0, 0.0, 0.0]))
     g_t = _scale_pyramid_vals(pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0]))
-    g_ctr = float(pyramid_data.get("scale_centroid", 0.0))
+    g_ctr = float(pyramid_data.get("scale_centroid_renorm", pyramid_data.get("scale_centroid", 0.0)))
+    g_t_ctr = float(pyramid_data.get("temporal_scale_centroid", 0.0))
     q = pyramid_data.get("quadrant_bands", {})
     q_t = pyramid_data.get("quadrant_temporal_bands", {})
-    q_ctr = pyramid_data.get("quadrant_scale_centroids", {})
+    q_ctr = pyramid_data.get("quadrant_scale_centroids_renorm", pyramid_data.get("quadrant_scale_centroids", {}))
+    q_t_ctr = pyramid_data.get("quadrant_temporal_scale_centroids", {})
     wd = wavelength_data or {}
     q_wl = wd.get("quadrants", {})
     g_wl = wd.get("wavelength_px")
@@ -938,6 +944,7 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
         y = int(np.clip(y, 24, max(24, h - 24 - group_h)))
         _draw_pyramid_bar_group(out, x, y, _scale_pyramid_vals(q.get(label, [0.0] * bar_count)), "",
             temporal_bands=_scale_pyramid_vals(q_t.get(label)), centroid=q_ctr.get(label),
+            temporal_centroid=q_t_ctr.get(label),
             temporal_shift_y=(left_temporal_shift_y if label in ("UL", "UR", "LL", "LR") else 0))
         wl_val = (q_wl.get(label) or {}).get("wavelength_px")
         wl_y = int(np.clip(wl_y, 24, max(24, h - 24 - 68)))
@@ -947,7 +954,7 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     g_cx, g_cy = centers["G"]
     g_bar_x = int(np.clip(g_cx + g_radius + pad + 12, 14, max(14, w - 14 - group_w)))
     g_bar_y = int(np.clip(g_cy + 14 - 15, 24, max(24, h - 24 - group_h_global)))
-    _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "", temporal_bands=g_t, centroid=g_ctr)
+    _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "", temporal_bands=g_t, centroid=g_ctr, temporal_centroid=g_t_ctr)
     g_wl_x = int(np.clip(g_cx - g_radius - pad - 10 - 12, 10, max(10, w - 10 - 10)))
     g_wl_y = int(np.clip(g_cy + 14 - 15, 24, max(24, h - 24 - 68)))
     _draw_vertical_slider(out, g_wl_x, g_wl_y, g_wl, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
