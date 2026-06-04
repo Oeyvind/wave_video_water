@@ -1716,6 +1716,33 @@ class WaveAnalyzer:
                 "directional_best_stripe_support": float(dir_scores.get("best_stripe_support", 0.0)),
             })
 
+        # Per-quadrant flow metrics sliced from the current fast/slow flow fields.
+        if self.last_flow is not None:
+            _fh, _fw = self.last_flow.shape[:2]
+            _hh, _hw = _fh // 2, _fw // 2
+            flow_data["quadrant_fast_metrics"] = {
+                q: self._flow_metrics(sl, min_mag=0.25, speed_divisor=6.0, activity_divisor=8.0)
+                for q, sl in {
+                    "UL": self.last_flow[0:_hh, 0:_hw],
+                    "UR": self.last_flow[0:_hh, _hw:],
+                    "LL": self.last_flow[_hh:, 0:_hw],
+                    "LR": self.last_flow[_hh:, _hw:],
+                }.items()
+            }
+        if self.last_flow_slow is not None:
+            _n = float(self.flow_slow_interval)
+            _sfh, _sfw = self.last_flow_slow.shape[:2]
+            _shh, _shw = _sfh // 2, _sfw // 2
+            flow_data["quadrant_slow_metrics"] = {
+                q: self._flow_metrics(sl, min_mag=0.16 * _n, speed_divisor=6.0 * _n, activity_divisor=8.0 * _n)
+                for q, sl in {
+                    "UL": self.last_flow_slow[0:_shh, 0:_shw],
+                    "UR": self.last_flow_slow[0:_shh, _shw:],
+                    "LL": self.last_flow_slow[_shh:, 0:_shw],
+                    "LR": self.last_flow_slow[_shh:, _shw:],
+                }.items()
+            }
+
         self.last_flow_metrics = dict(flow_data)
         return flow_data
 

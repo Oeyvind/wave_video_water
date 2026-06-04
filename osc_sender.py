@@ -21,21 +21,29 @@ def send_fused_wave_data(analysis):
     client.send_message("/wave/activity", float(smooth["activity"]))
     client.send_message("/wave/confidence", float(smooth["confidence"]))
 
+    def _clip(v, lo, hi):
+        return float(min(max(float(v), float(lo)), float(hi)))
+
     # Wavelength channels (scaled to match on-screen WL slider gain).
     wl_data = analysis.get("wavelength_data", {}) or {}
     wl_px = wl_data.get("wavelength_px")
+    wl0_norm = 0.0
     if wl_px is not None:
         wl_scaled = float(max(0.0, wl_px) * 1.3)
-        client.send_message("/wave/wavelength_px", wl_scaled)
-        client.send_message("/wave/wavelength_norm", float(min(wl_scaled / 300.0, 1.0)))
+        wl0_norm = float(min(wl_scaled / 300.0, 1.0))
 
     wl_quads = wl_data.get("quadrants", {}) if isinstance(wl_data, dict) else {}
+    wl_pack = [wl0_norm]
     for q in ("UL", "UR", "LL", "LR"):
         q_wl = (wl_quads.get(q) or {}).get("wavelength_px")
+        q_norm = 0.0
         if q_wl is not None:
             q_scaled = float(max(0.0, q_wl) * 1.3)
-            client.send_message(f"/wave/wavelength/{q.lower()}_px", q_scaled)
-            client.send_message(f"/wave/wavelength/{q.lower()}_norm", float(min(q_scaled / 300.0, 1.0)))
+            q_norm = float(min(q_scaled / 300.0, 1.0))
+        wl_pack.append(q_norm)
+
+    # Packed wavelength message: global + UL/UR/LL/LR normalized values.
+    client.send_message("/wave/wavelength/pack", wl_pack)
 
     # Pyramid S/T channels (scaled for more expressive control range).
     pyr = analysis.get("pyramid_data", {}) or {}
@@ -43,12 +51,17 @@ def send_fused_wave_data(analysis):
     g_t = pyr.get("temporal_band_activity", [0.0, 0.0, 0.0])
     g_s_ctr = float(pyr.get("scale_centroid_renorm", pyr.get("scale_centroid", 0.0)))
     g_t_ctr = float(pyr.get("temporal_scale_centroid", 0.0))
-    for i, v in enumerate(g_s):
-        client.send_message(f"/wave/pyramid/global/s{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
-    for i, v in enumerate(g_t):
-        client.send_message(f"/wave/pyramid/global/t{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
-    client.send_message("/wave/pyramid/global/centroid_s", float(min(max(g_s_ctr, 0.0), 1.0)))
-    client.send_message("/wave/pyramid/global/centroid_t", float(min(max(g_t_ctr, 0.0), 1.0)))
+    g_pack = [
+        _clip(g_s[0] * 1.3, 0.0, 1.0),
+        _clip(g_s[1] * 1.3, 0.0, 1.0),
+        _clip(g_s[2] * 1.3, 0.0, 1.0),
+        _clip(g_t[0] * 1.3, 0.0, 1.0),
+        _clip(g_t[1] * 1.3, 0.0, 1.0),
+        _clip(g_t[2] * 1.3, 0.0, 1.0),
+        _clip(g_s_ctr, 0.0, 1.0),
+        _clip(g_t_ctr, 0.0, 1.0),
+    ]
+    client.send_message("/wave/pyramid/global/pack", g_pack)
 
     q_s = pyr.get("quadrant_bands", {}) if isinstance(pyr, dict) else {}
     q_t = pyr.get("quadrant_temporal_bands", {}) if isinstance(pyr, dict) else {}
@@ -56,12 +69,43 @@ def send_fused_wave_data(analysis):
     q_t_ctr = pyr.get("quadrant_temporal_scale_centroids", {}) if isinstance(pyr, dict) else {}
     for q in ("UL", "UR", "LL", "LR"):
         q_key = q.lower()
-        for i, v in enumerate(q_s.get(q, [0.0, 0.0, 0.0])):
-            client.send_message(f"/wave/pyramid/{q_key}/s{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
-        for i, v in enumerate(q_t.get(q, [0.0, 0.0, 0.0])):
-            client.send_message(f"/wave/pyramid/{q_key}/t{i}", float(min(max(float(v) * 1.3, 0.0), 1.0)))
-        client.send_message(f"/wave/pyramid/{q_key}/centroid_s", float(min(max(float(q_s_ctr.get(q, 0.0)), 0.0), 1.0)))
-        client.send_message(f"/wave/pyramid/{q_key}/centroid_t", float(min(max(float(q_t_ctr.get(q, 0.0)), 0.0), 1.0)))
+        qsv = q_s.get(q, [0.0, 0.0, 0.0])
+        qtv = q_t.get(q, [0.0, 0.0, 0.0])
+        q_pack = [
+            _clip(qsv[0] * 1.3, 0.0, 1.0),
+            _clip(qsv[1] * 1.3, 0.0, 1.0),
+            _clip(qsv[2] * 1.3, 0.0, 1.0),
+            _clip(qtv[0] * 1.3, 0.0, 1.0),
+            _clip(qtv[1] * 1.3, 0.0, 1.0),
+            _clip(qtv[2] * 1.3, 0.0, 1.0),
+            _clip(float(q_s_ctr.get(q, 0.0)), 0.0, 1.0),
+            _clip(float(q_t_ctr.get(q, 0.0)), 0.0, 1.0),
+        ]
+        client.send_message(f"/wave/pyramid/{q_key}/pack", q_pack)
+
+    # LBP channels (global + quadrants).
+    lbp = analysis.get("lbp_data", {}) or {}
+    lbp_q = lbp.get("quadrants", {}) if isinstance(lbp, dict) else {}
+
+    g_smooth = _clip(lbp.get("lbp_smooth", 0.0), 0.0, 1.0)
+    g_order = float(lbp.get("lbp_order", 0.0))
+    g_chaos = float(lbp.get("lbp_chaos", 0.0))
+    g_order_chaos = _clip(g_order - g_chaos, -1.0, 1.0)
+
+    q_smooth_pack = [g_smooth]
+    q_orderchaos_pack = [g_order_chaos]
+    for q in ("UL", "UR", "LL", "LR"):
+        qd = lbp_q.get(q, {}) if isinstance(lbp_q, dict) else {}
+        q_smooth = _clip(qd.get("lbp_smooth", 0.0), 0.0, 1.0)
+        q_order = float(qd.get("lbp_order", 0.0))
+        q_chaos = float(qd.get("lbp_chaos", 0.0))
+        q_order_chaos = _clip(q_order - q_chaos, -1.0, 1.0)
+        q_smooth_pack.append(q_smooth)
+        q_orderchaos_pack.append(q_order_chaos)
+
+    # Packed LBP messages (global + 4 quadrants).
+    client.send_message("/wave/lbp/smooth_pack", q_smooth_pack)
+    client.send_message("/wave/lbp/orderchaos_pack", q_orderchaos_pack)
 
     # Optional debug channels for inspectability in downstream tools.
     client.send_message("/wave/raw/frequency_hz", float(raw["wave_frequency_hz"]))
@@ -69,13 +113,33 @@ def send_fused_wave_data(analysis):
 
     # Per-scale and adaptive flow direction channels.
     flow = analysis.get("flow_data", {})
-    client.send_message("/wave/flow/fast_direction_deg", float(flow.get("fast_direction_deg", 0.0)))
-    client.send_message("/wave/flow/fast_activity", float(flow.get("fast_activity", 0.0)))
-    client.send_message("/wave/flow/fast_coherence", float(flow.get("fast_coherence", 0.0)))
-    client.send_message("/wave/flow/slow_direction_deg", float(flow.get("slow_direction_deg", 0.0)))
-    client.send_message("/wave/flow/slow_activity", float(flow.get("slow_activity", 0.0)))
-    client.send_message("/wave/flow/slow_coherence", float(flow.get("slow_coherence", 0.0)))
+    client.send_message("/wave/flow/fast_pack", [
+        float(flow.get("fast_direction_deg", 0.0)),
+        float(flow.get("fast_activity", 0.0)),
+        float(flow.get("fast_coherence", 0.0)),
+    ])
+    client.send_message("/wave/flow/slow_pack", [
+        float(flow.get("slow_direction_deg", 0.0)),
+        float(flow.get("slow_activity", 0.0)),
+        float(flow.get("slow_coherence", 0.0)),
+    ])
     client.send_message("/wave/flow/adaptive_direction_deg", float(flow.get("adaptive_direction_deg", 0.0)))
     client.send_message("/wave/flow/adaptive_activity", float(flow.get("adaptive_activity", 0.0)))
     client.send_message("/wave/flow/adaptive_coherence", float(flow.get("adaptive_coherence", 0.0)))
     client.send_message("/wave/flow/direction_quality", float(flow.get("direction_quality", 0.0)))
+
+    # Per-quadrant fast flow: [UL_dir, UL_act, UR_dir, UR_act, LL_dir, LL_act, LR_dir, LR_act]
+    qfm = flow.get("quadrant_fast_metrics") or {}
+    fast_quad_pack = []
+    for q in ("UL", "UR", "LL", "LR"):
+        m = qfm.get(q) or {}
+        fast_quad_pack += [float(m.get("direction_deg", 0.0)), float(m.get("activity", 0.0))]
+    client.send_message("/wave/flow/fast_quad_pack", fast_quad_pack)
+
+    # Per-quadrant slow flow: [UL_dir, UL_act, UR_dir, UR_act, LL_dir, LL_act, LR_dir, LR_act]
+    qsm = flow.get("quadrant_slow_metrics") or {}
+    slow_quad_pack = []
+    for q in ("UL", "UR", "LL", "LR"):
+        m = qsm.get(q) or {}
+        slow_quad_pack += [float(m.get("direction_deg", 0.0)), float(m.get("activity", 0.0))]
+    client.send_message("/wave/flow/slow_quad_pack", slow_quad_pack)
