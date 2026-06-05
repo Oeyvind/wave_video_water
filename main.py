@@ -167,8 +167,33 @@ def select_video_source():
         try:
             choice_num = int(input("Select video source (0 for camera, or enter number): ").strip())
             if choice_num == 0:
-                print("\nUsing live camera (index 0)...\n")
-                return 0, Path("camera")
+                # Probe available cameras (indices 0–9) and let user pick one.
+                print("\nScanning for available cameras...")
+                available_cameras = []
+                for cam_idx in range(10):
+                    cap_test = cv2.VideoCapture(cam_idx, cv2.CAP_DSHOW)
+                    if cap_test.isOpened():
+                        available_cameras.append(cam_idx)
+                        cap_test.release()
+                if not available_cameras:
+                    print("No cameras found. Please connect a camera and try again.")
+                    continue
+                if len(available_cameras) == 1:
+                    cam_index = available_cameras[0]
+                    print(f"\nUsing live camera (index {cam_index})...\n")
+                    return cam_index, Path("camera")
+                print("\nAvailable cameras:")
+                for cam_idx in available_cameras:
+                    print(f"  {cam_idx}. Camera {cam_idx}")
+                while True:
+                    try:
+                        cam_choice = int(input(f"Select camera index ({available_cameras[0]}-{available_cameras[-1]}): ").strip())
+                        if cam_choice in available_cameras:
+                            print(f"\nUsing live camera (index {cam_choice})...\n")
+                            return cam_choice, Path("camera")
+                        print(f"Invalid choice. Available indices: {available_cameras}")
+                    except ValueError:
+                        print("Invalid input. Please enter a number.")
             if 1 <= choice_num <= len(video_files):
                 selected_file = video_files[choice_num - 1]
                 file_path = video_dir / selected_file
@@ -183,6 +208,18 @@ def get_mask_path(source_path):
     if source_path.name == "camera":
         return Path.cwd() / "camera.mask"
     return source_path.with_suffix(".mask")
+
+
+def configure_camera_capture(cap, target_width=1280, target_height=720):
+    requested_width = int(target_width)
+    requested_height = int(target_height)
+    if hasattr(cv2, "CAP_PROP_FRAME_WIDTH"):
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, requested_width)
+    if hasattr(cv2, "CAP_PROP_FRAME_HEIGHT"):
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, requested_height)
+    actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or requested_width)
+    actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or requested_height)
+    return requested_width, requested_height, actual_width, actual_height
 
 
 def save_mask(mask_path, points):
@@ -1039,7 +1076,24 @@ def make_display_frame(
 
 def main():
     video_source, source_path = select_video_source()
-    cap = cv2.VideoCapture(video_source)
+    if isinstance(video_source, int):
+        cap = cv2.VideoCapture(video_source, cv2.CAP_DSHOW)
+        requested_width, requested_height, actual_width, actual_height = configure_camera_capture(
+            cap,
+            target_width=1280,
+            target_height=720,
+        )
+        if (actual_width, actual_height) != (requested_width, requested_height):
+            print(
+                f"Requested camera resolution: {requested_width}x{requested_height} "
+                f"(backend reported {actual_width}x{actual_height}; frames will be downsampled)"
+            )
+        else:
+            print(f"Requested camera resolution: {requested_width}x{requested_height}")
+    else:
+        cap = cv2.VideoCapture(video_source)
+        requested_width = 1280
+        requested_height = 720
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     print(f"Video FPS: {fps:.2f}")
 
@@ -1369,7 +1423,7 @@ def main():
     while True:
         loop_start = time.perf_counter()
         cap_t0 = time.perf_counter()
-        result = get_frame(cap, loop=loop_video)
+        result = get_frame(cap, loop=loop_video, target_size=(requested_width, requested_height))
         cap_t1 = time.perf_counter()
         profile_windows["capture_ms"].append((cap_t1 - cap_t0) * 1000.0)
         if result is None:

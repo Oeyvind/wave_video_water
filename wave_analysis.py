@@ -1948,12 +1948,12 @@ class WaveAnalyzer:
         wavelength_data["quadrants"] = quadrant_wavelengths
 
         # Median pre-filter (length 5) then 2 Hz IIR lowpass to remove jitter.
+        _lp_alpha = float(1.0 - np.exp(-2.0 * np.pi * 2.0 / max(self.fps, 1.0)))
         _raw_wl = wavelength_data.get("wavelength_px")
         if _raw_wl is not None:
             self._wl_history.append(float(_raw_wl))
         if self._wl_history:
             _median_wl = float(np.median(list(self._wl_history)))
-            _lp_alpha = float(1.0 - np.exp(-2.0 * np.pi * 2.0 / max(self.fps, 1.0)))
             if self._wl_lp_state is None:
                 self._wl_lp_state = _median_wl
             else:

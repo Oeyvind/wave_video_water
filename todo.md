@@ -12,6 +12,8 @@
 * Contour:
   - skip contours with area > 10% of image, as preprocess before everything else
 
+* Readme for key control switches etc
+
 * Waveform transfer
   - downsample (how much) ... to 512 samples?
   - transfer values via 16 sample chunks over OSC
