@@ -1,5 +1,5 @@
 <Cabbage>
-form caption("Wave Synth") size(1260, 700), guiMode("queue"), pluginId("wSyn"), colour(20, 20, 20)
+form caption("Wave Synth") size(1260, 800), guiMode("queue"), pluginId("wSyn"), colour(20, 20, 20)
 
 ; --- Instrument 31 controls ---
 
@@ -244,7 +244,133 @@ combobox bounds(1152, 250, 50, 16), channel("m_master_pan_mode"), value(1), text
 label bounds(1204, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
 }
 
-csoundoutput bounds(5, 500, 1250, 200)
+groupbox bounds(5, 300, 1250, 290), channel("ngGroup"), text("Instr32: NoiseGrains + Mod Routing"), colour(40, 48, 58), fontColour(220, 220, 220), outlineColour(80, 100, 92) {
+button bounds(3, 50, 36, 24), channel("inst32_on"), text("On"), value(0), colour:0("#3c4652"), colour:1("#2ecc71"), fontColour("white")
+button bounds(3, 78, 36, 18), channel("ng_collapse"), text("+","-"), value(1), colour:0(60,30,30), colour:1(30,60,30), fontColour("white")
+button bounds(32, 142, 6, 34), channel("ng_master_reset"), value(0), colour:0(100,20,20), colour:1(200,40,40)
+button bounds(41, 142, 6, 34), channel("ng_master_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+; Module ng_amp (Amp, col 1 - has labels)
+rslider channel("ng_amp_view"), bounds(48, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_amp_base"), bounds(48, 29, 70, 70), text("Amp"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+combobox bounds(48, 102, 85, 18), channel("m_ng_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(48, 122, 85, 18), channel("m_ng_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(48, 142, 50, 16), channel("m_ng_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 160, 50, 16), channel("m_ng_amp_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(100, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(99, 142, 6, 34), channel("m_ng_amp_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(48, 178, 50, 16), channel("m_ng_amp_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(100, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 196, 50, 16), channel("m_ng_amp_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(48, 214, 50, 16), channel("m_ng_amp_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+label bounds(100, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(100, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 232, 50, 16), channel("m_ng_amp_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(100, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(48, 250, 50, 16), channel("m_ng_amp_mode"), value(1), text("Add","Mul")
+label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+; Module ng_wfreq (WavFreq, col 2 - no labels)
+rslider channel("ng_wfreq_view"), bounds(140, 25, 70, 70), text(""), range(1, 5000, 440, 0.3, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_wfreq_base"), bounds(140, 29, 70, 70), text("WavFreq"), range(1, 5000, 440, 0.3, 1), trackerColour(40,80,200)
+combobox bounds(140, 102, 85, 18), channel("m_ng_wfreq_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(140, 122, 85, 18), channel("m_ng_wfreq_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(140, 142, 50, 16), channel("m_ng_wfreq_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(140, 160, 50, 16), channel("m_ng_wfreq_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(191, 142, 6, 34), channel("m_ng_wfreq_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(140, 178, 50, 16), channel("m_ng_wfreq_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(140, 196, 50, 16), channel("m_ng_wfreq_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(140, 214, 50, 16), channel("m_ng_wfreq_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+nslider bounds(140, 232, 50, 16), channel("m_ng_wfreq_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(140, 250, 50, 16), channel("m_ng_wfreq_mode"), value(1), text("Add","Mul")
+; Module ng_grate (GrainRate, col 3 - has labels)
+rslider channel("ng_grate_view"), bounds(232, 25, 70, 70), text(""), range(0.2, 200, 10, 0.3, 0.1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_grate_base"), bounds(232, 29, 70, 70), text("GrainRate"), range(0.2, 200, 10, 0.3, 0.1), trackerColour(40,80,200)
+combobox bounds(232, 102, 85, 18), channel("m_ng_grate_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(232, 122, 85, 18), channel("m_ng_grate_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(232, 142, 50, 16), channel("m_ng_grate_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 160, 50, 16), channel("m_ng_grate_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(284, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(283, 142, 6, 34), channel("m_ng_grate_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(232, 178, 50, 16), channel("m_ng_grate_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(284, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 196, 50, 16), channel("m_ng_grate_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(232, 214, 50, 16), channel("m_ng_grate_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+label bounds(284, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(284, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 232, 50, 16), channel("m_ng_grate_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(284, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(232, 250, 50, 16), channel("m_ng_grate_mode"), value(1), text("Add","Mul")
+label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+; Module ng_gdur (GrainDur, col 4 - no labels)
+rslider channel("ng_gdur_view"), bounds(324, 25, 70, 70), text(""), range(0, 1, 0.2, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_gdur_base"), bounds(324, 29, 70, 70), text("GrainDur"), range(0, 1, 0.2, 1, 0.001), trackerColour(40,80,200)
+combobox bounds(324, 102, 85, 18), channel("m_ng_gdur_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(324, 122, 85, 18), channel("m_ng_gdur_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(324, 142, 50, 16), channel("m_ng_gdur_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(324, 160, 50, 16), channel("m_ng_gdur_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(375, 142, 6, 34), channel("m_ng_gdur_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(324, 178, 50, 16), channel("m_ng_gdur_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(324, 196, 50, 16), channel("m_ng_gdur_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(324, 214, 50, 16), channel("m_ng_gdur_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+nslider bounds(324, 232, 50, 16), channel("m_ng_gdur_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(324, 250, 50, 16), channel("m_ng_gdur_mode"), value(1), text("Add","Mul")
+; Module ng_adr (A/D Ratio, col 5 - has labels)
+rslider channel("ng_adr_view"), bounds(416, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_adr_base"), bounds(416, 29, 70, 70), text("A/D"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+combobox bounds(416, 102, 85, 18), channel("m_ng_adr_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(416, 122, 85, 18), channel("m_ng_adr_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(416, 142, 50, 16), channel("m_ng_adr_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 160, 50, 16), channel("m_ng_adr_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(468, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(467, 142, 6, 34), channel("m_ng_adr_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(416, 178, 50, 16), channel("m_ng_adr_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(468, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 196, 50, 16), channel("m_ng_adr_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(416, 214, 50, 16), channel("m_ng_adr_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+label bounds(468, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(468, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 232, 50, 16), channel("m_ng_adr_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(468, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(416, 250, 50, 16), channel("m_ng_adr_mode"), value(1), text("Add","Mul")
+label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+; Module ng_sus (Sustain, col 6 - no labels)
+rslider channel("ng_sus_view"), bounds(508, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_sus_base"), bounds(508, 29, 70, 70), text("Sustain"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+combobox bounds(508, 102, 85, 18), channel("m_ng_sus_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(508, 122, 85, 18), channel("m_ng_sus_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(508, 142, 50, 16), channel("m_ng_sus_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(508, 160, 50, 16), channel("m_ng_sus_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(559, 142, 6, 34), channel("m_ng_sus_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(508, 178, 50, 16), channel("m_ng_sus_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(508, 196, 50, 16), channel("m_ng_sus_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(508, 214, 50, 16), channel("m_ng_sus_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+nslider bounds(508, 232, 50, 16), channel("m_ng_sus_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(508, 250, 50, 16), channel("m_ng_sus_mode"), value(1), text("Add","Mul")
+; Module ng_nlvl (NoiseLevel, col 7 - has labels)
+rslider channel("ng_nlvl_view"), bounds(600, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_nlvl_base"), bounds(600, 29, 70, 70), text("NoiseLevel"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+combobox bounds(600, 102, 85, 18), channel("m_ng_nlvl_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(600, 122, 85, 18), channel("m_ng_nlvl_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(600, 142, 50, 16), channel("m_ng_nlvl_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 160, 50, 16), channel("m_ng_nlvl_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(652, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(651, 142, 6, 34), channel("m_ng_nlvl_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(600, 178, 50, 16), channel("m_ng_nlvl_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(652, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 196, 50, 16), channel("m_ng_nlvl_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(600, 214, 50, 16), channel("m_ng_nlvl_gain"), text(""), range(-9999,9999,0,1,0.001), fontSize(13)
+label bounds(652, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(652, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 232, 50, 16), channel("m_ng_nlvl_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(652, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(600, 250, 50, 16), channel("m_ng_nlvl_mode"), value(1), text("Add","Mul")
+label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+}
+
+csoundoutput bounds(5, 595, 1250, 200)
 
 </Cabbage>
 
@@ -260,6 +386,19 @@ nchnls = 2
 0dbfs = 1
 
 gihOsc OSCinit 8000
+
+  ; classic waveforms
+	giSine		ftgen	0, 0, 65537, 10, 1					; sine wave
+	giCosine	ftgen	0, 0, 8193, 9, 1, 1, 90					; cosine wave
+	giTri		ftgen	0, 0, 8193, 7, 0, 2048, 1, 4096, -1, 2048, 0		; triangle wave 
+	giNoise		ftgen	0, 0, 65536, 21, 1
+
+	; grain envelope tables
+	giSigmoRise 	ftgen	0, 0, 8193, 19, 0.5, 1, 270, 1				; rising sigmoid
+	giSigmoFall 	ftgen	0, 0, 8193, 19, 0.5, 1, 90, 1				; falling sigmoid
+	giExpFall	ftgen	0, 0, 8193, 5, 1, 8193, 0.00001				; exponential decay
+	giTriangleWin 	ftgen	0, 0, 8193, 7, 0, 4096, 1, 4096, 0			; triangular window 
+
 
 opcode ButtonEvent, 0, Sii
     Schan, iInstr, iMode xin
@@ -479,6 +618,98 @@ opcode ApplyMod, k, Skkkkkkkkkkk
     xout kout
 endop
 
+opcode NoiseGrains, a, kkkkkkk
+  kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level xin
+
+; grain rate
+    agrainrate = kgrainrate
+    async = 0
+
+; distribution 
+	kdistribution = 0; chnget "Distribution"			; grain random distribution in time
+	idisttab ftgentmp	0, 0, 16, 16, 1, 16, -10, 0	; probability distribution for random grain masking
+
+; grain shape
+	kduration = divz(1,kgrainrate,1)*kgraindur*1000; 
+
+	ienv_attack	= giSigmoRise 			; grain attack shape (from table)
+	ienv_decay = giSigmoFall 			; grain decay shape (from table)
+	ksustain_amount	= 0.0					  ; balance between enveloped time(attack+decay) and sustain level time, 0.0 = no time at sustain level
+	ka_d_ratio = 0.1      					; balance between attack time and decay time, 0.0 = zero attack time and full decay time
+	kenv2amt = 0                    ; amount of secondary enveloping per grain (e.g. for fof synthesis)
+	ienv2tab = giExpFall 				  ; secondary grain shape (from table), enveloping the whole grain if used
+
+; select source waveforms
+	kwaveform1 = giSine		; source audio waveform 
+	kwaveform2 = giNoise		; source audio waveform 
+    itablen2 tableng giNoise
+    ifildur2 = itablen2 	 ; length in samples
+
+; original pitch for each waveform, use if they should be transposed individually
+	kwavekey1	= 1
+	kwavekey2	= 10/ifildur2
+	kwavekey3	= 1
+	kwavekey4	= 1
+	asamplepos	= 0				
+
+; "master" grain pitch (transpose for all 4 source waveforms)
+    ;kwavfreq	= kwavfreq					; transposition factor (playback speed) of audio inside grains, 
+  
+; pitch sweep
+	ksweepshape		= 0.5						; grain wave pitch sweep shape (sweep speed), 0.5 is linear sweep
+	iwavfreqstarttab 	ftgentmp	0, 0, 16, -2, 0, 0,   1		; start freq scalers, per grain
+	iwavfreqendtab		ftgentmp	0, 0, 16, -2, 0, 0,   1		; end freq scalers, per grain
+
+; FM of grain pitch (playback speed)
+	awavfm = 0
+
+; trainlet parameters (not using trainlets)
+	icosine	= giCosine
+	kTrainCps	= 100		
+	knumpartials = 1	
+	kchroma = 1	
+
+	; gain masking table, amplitude for individual grains
+	igainmasks	ftgentmp	0, 0, 16, -2, 0, 0, 1
+
+	; channel masking table, output routing for individual grains (zero based, a value of 0.0 routes to output 1)
+	ichanmasks	ftgentmp	0, 0, 16, -2,  0, 0,  0.5
+	
+	; random masking (muting) of individual grains
+	krandommask	=0;chnget "RandMask"
+
+	; wave mix masking. 
+    iwaveamptab	ftgentmp 0, 0, 32, -2,   0, 0,  1,0,0,0,0
+    ksinegain	= sqrt(1-knoise_level)
+    knoisegain = sqrt(knoise_level)
+    tablew ksinegain, 2, iwaveamptab
+	tablew knoisegain, 3, iwaveamptab
+
+; system parameter
+	imax_grains	= 100				; max number of grains per k-period
+        
+	a1,a2,a3,a4,a5,a6,a7,a8	partikkel \					; 					
+			agrainrate, \						; grains per second			
+			kdistribution, idisttab, async, \			; synchronous/asynchronous		
+			kenv2amt, ienv2tab, ienv_attack, ienv_decay, \		; grain envelope (advanced)		
+			ksustain_amount, ka_d_ratio, kduration, \		; grain envelope 			
+			kamp, \							; amp					
+			igainmasks, \						; gain masks (advanced)			
+			kwavfreq, \						; grain pitch (playback frequency)	
+			ksweepshape, iwavfreqstarttab, iwavfreqendtab, \	; grain pith sweeps (advanced)		
+			awavfm, -1, -1, \				; grain pitch FM (advanced)		
+			icosine, kTrainCps, knumpartials, kchroma, \		; trainlets				
+			ichanmasks, \ 					        ; channel mask (advanced)
+			krandommask, \						; random masking of single grains	
+			kwaveform1, kwaveform2, kwaveform1, kwaveform1, \	; set source waveforms, all set to the live input buffer here
+			iwaveamptab, \						; mix source waveforms (remember, we can use different samplepos and transposition for each)
+			asamplepos, asamplepos, asamplepos, asamplepos, \	; read position for source waves	
+			kwavekey1, kwavekey2, kwavekey3, kwavekey4, \		; individual transpose for each source
+			imax_grains						; system parameter (advanced)
+  
+  xout(a1)
+endop
+
 ; GUI handling and button -> instrument events
 instr 1
     kmod_col  chnget "mod_collapse"
@@ -486,12 +717,25 @@ instr 1
     if ktrig_col == 1 then
         if kmod_col > 0.5 then
             cabbageSet ktrig_col, "modGroup", "bounds(5, 5, 1250, 290)"
+            cabbageSet ktrig_col, "ngGroup", "bounds(5, 300, 1250, 290)"
         else
             cabbageSet ktrig_col, "modGroup", "bounds(5, 5, 1250, 100)"
+            cabbageSet ktrig_col, "ngGroup", "bounds(5, 105, 1250, 290)"
+        endif
+    endif
+
+    kng_col  chnget "ng_collapse"
+    ktrig_ngcol changed kng_col
+    if ktrig_ngcol == 1 then
+        if kng_col > 0.5 then
+            cabbageSet ktrig_ngcol, "ngGroup", "bounds(5, 300, 1250, 290)"
+        else
+            cabbageSet ktrig_ngcol, "ngGroup", "bounds(5, 300, 1250, 100)"
         endif
     endif
 
     ButtonEvent "inst31_on", 31, 0
+    ButtonEvent "inst32_on", 32, 0
 
     kmaster_reset chnget "master_reset"
     ktrig_mr changed kmaster_reset
@@ -595,6 +839,71 @@ instr 1
             cabbageSetValue "m_v3_bw_cal",     0, 1
             cabbageSetValue "m_v3_amp_cal",    0, 1
             cabbageSetValue "m_master_pan_cal", 0, 1
+        endif
+    endif
+
+    ; instr 32 master reset
+    kng_reset chnget "ng_master_reset"
+    ktrig_ngr changed kng_reset
+    if (ktrig_ngr > 0 && kng_reset > 0.5) then
+        cabbageSetValue "m_ng_amp_min",   0, 1
+        cabbageSetValue "m_ng_amp_max",   1, 1
+        cabbageSetValue "m_ng_wfreq_min", 0, 1
+        cabbageSetValue "m_ng_wfreq_max", 1, 1
+        cabbageSetValue "m_ng_grate_min", 0, 1
+        cabbageSetValue "m_ng_grate_max", 1, 1
+        cabbageSetValue "m_ng_gdur_min",  0, 1
+        cabbageSetValue "m_ng_gdur_max",  1, 1
+        cabbageSetValue "m_ng_adr_min",   0, 1
+        cabbageSetValue "m_ng_adr_max",   1, 1
+        cabbageSetValue "m_ng_sus_min",   0, 1
+        cabbageSetValue "m_ng_sus_max",   1, 1
+        cabbageSetValue "m_ng_nlvl_min",  0, 1
+        cabbageSetValue "m_ng_nlvl_max",  1, 1
+        cabbageSetValue "ng_master_reset", 0, 1
+    endif
+
+    ; instr 32 master cal
+    kng_cal chnget "ng_master_cal"
+    ktrig_ngc changed kng_cal
+    if (ktrig_ngc > 0) then
+        kng_amp_s   chnget "m_ng_amp_src"
+        kng_wfreq_s chnget "m_ng_wfreq_src"
+        kng_grate_s chnget "m_ng_grate_src"
+        kng_gdur_s  chnget "m_ng_gdur_src"
+        kng_adr_s   chnget "m_ng_adr_src"
+        kng_sus_s   chnget "m_ng_sus_src"
+        kng_nlvl_s  chnget "m_ng_nlvl_src"
+        if (kng_cal > 0.5) then
+            if (kng_amp_s > 1.5) then
+                cabbageSetValue "m_ng_amp_cal", 1, 1
+            endif
+            if (kng_wfreq_s > 1.5) then
+                cabbageSetValue "m_ng_wfreq_cal", 1, 1
+            endif
+            if (kng_grate_s > 1.5) then
+                cabbageSetValue "m_ng_grate_cal", 1, 1
+            endif
+            if (kng_gdur_s > 1.5) then
+                cabbageSetValue "m_ng_gdur_cal", 1, 1
+            endif
+            if (kng_adr_s > 1.5) then
+                cabbageSetValue "m_ng_adr_cal", 1, 1
+            endif
+            if (kng_sus_s > 1.5) then
+                cabbageSetValue "m_ng_sus_cal", 1, 1
+            endif
+            if (kng_nlvl_s > 1.5) then
+                cabbageSetValue "m_ng_nlvl_cal", 1, 1
+            endif
+        else
+            cabbageSetValue "m_ng_amp_cal",   0, 1
+            cabbageSetValue "m_ng_wfreq_cal", 0, 1
+            cabbageSetValue "m_ng_grate_cal", 0, 1
+            cabbageSetValue "m_ng_gdur_cal",  0, 1
+            cabbageSetValue "m_ng_adr_cal",   0, 1
+            cabbageSetValue "m_ng_sus_cal",   0, 1
+            cabbageSetValue "m_ng_nlvl_cal",  0, 1
         endif
     endif
 endin
@@ -1240,6 +1549,134 @@ instr 31
 
     ; Mild global trim
     outs aL * 0.25, aR * 0.25
+endin
+
+instr 32
+
+    ; Base values from GUI rsliders
+    kampb    chnget "ng_amp_base"
+    kwfreqb  chnget "ng_wfreq_base"
+    kgrateb  chnget "ng_grate_base"
+    kgdurb   chnget "ng_gdur_base"
+    kadrb    chnget "ng_adr_base"
+    ksusb    chnget "ng_sus_base"
+    knlvlb   chnget "ng_nlvl_base"
+
+    ; Shared mod router temps
+    ks   init 0
+    kmin init 0
+    kmax init 1
+    kexp init 1
+    ko   init 0
+    kg   init 0
+    ka   init 1
+    km   init 1
+    kc   init 0
+    klp  init 20
+
+    ks chnget "m_ng_amp_src"
+    kmin chnget "m_ng_amp_min"
+    kmax chnget "m_ng_amp_max"
+    kexp chnget "m_ng_amp_exp"
+    ko chnget "m_ng_amp_offs"
+    kg chnget "m_ng_amp_gain"
+    ka chnget "m_ng_amp_area"
+    km chnget "m_ng_amp_mode"
+    kc chnget "m_ng_amp_cal"
+    klp chnget "m_ng_amp_lp"
+    kamp ApplyMod "ng_amp", kampb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_wfreq_src"
+    kmin chnget "m_ng_wfreq_min"
+    kmax chnget "m_ng_wfreq_max"
+    kexp chnget "m_ng_wfreq_exp"
+    ko chnget "m_ng_wfreq_offs"
+    kg chnget "m_ng_wfreq_gain"
+    ka chnget "m_ng_wfreq_area"
+    km chnget "m_ng_wfreq_mode"
+    kc chnget "m_ng_wfreq_cal"
+    klp chnget "m_ng_wfreq_lp"
+    kwavfreq ApplyMod "ng_wfreq", kwfreqb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_grate_src"
+    kmin chnget "m_ng_grate_min"
+    kmax chnget "m_ng_grate_max"
+    kexp chnget "m_ng_grate_exp"
+    ko chnget "m_ng_grate_offs"
+    kg chnget "m_ng_grate_gain"
+    ka chnget "m_ng_grate_area"
+    km chnget "m_ng_grate_mode"
+    kc chnget "m_ng_grate_cal"
+    klp chnget "m_ng_grate_lp"
+    kgrainrate ApplyMod "ng_grate", kgrateb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_gdur_src"
+    kmin chnget "m_ng_gdur_min"
+    kmax chnget "m_ng_gdur_max"
+    kexp chnget "m_ng_gdur_exp"
+    ko chnget "m_ng_gdur_offs"
+    kg chnget "m_ng_gdur_gain"
+    ka chnget "m_ng_gdur_area"
+    km chnget "m_ng_gdur_mode"
+    kc chnget "m_ng_gdur_cal"
+    klp chnget "m_ng_gdur_lp"
+    kgraindur ApplyMod "ng_gdur", kgdurb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_adr_src"
+    kmin chnget "m_ng_adr_min"
+    kmax chnget "m_ng_adr_max"
+    kexp chnget "m_ng_adr_exp"
+    ko chnget "m_ng_adr_offs"
+    kg chnget "m_ng_adr_gain"
+    ka chnget "m_ng_adr_area"
+    km chnget "m_ng_adr_mode"
+    kc chnget "m_ng_adr_cal"
+    klp chnget "m_ng_adr_lp"
+    ka_d_ratio ApplyMod "ng_adr", kadrb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_sus_src"
+    kmin chnget "m_ng_sus_min"
+    kmax chnget "m_ng_sus_max"
+    kexp chnget "m_ng_sus_exp"
+    ko chnget "m_ng_sus_offs"
+    kg chnget "m_ng_sus_gain"
+    ka chnget "m_ng_sus_area"
+    km chnget "m_ng_sus_mode"
+    kc chnget "m_ng_sus_cal"
+    klp chnget "m_ng_sus_lp"
+    ksustain_amount ApplyMod "ng_sus", ksusb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ng_nlvl_src"
+    kmin chnget "m_ng_nlvl_min"
+    kmax chnget "m_ng_nlvl_max"
+    kexp chnget "m_ng_nlvl_exp"
+    ko chnget "m_ng_nlvl_offs"
+    kg chnget "m_ng_nlvl_gain"
+    ka chnget "m_ng_nlvl_area"
+    km chnget "m_ng_nlvl_mode"
+    kc chnget "m_ng_nlvl_cal"
+    klp chnget "m_ng_nlvl_lp"
+    knoise_level ApplyMod "ng_nlvl", knlvlb, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ; Update view rsliders
+    ktrig_ng_amp = changed(kamp)
+    cabbageSetValue "ng_amp_view", kamp, ktrig_ng_amp
+    ktrig_ng_wfreq = changed(kwavfreq)
+    cabbageSetValue "ng_wfreq_view", kwavfreq, ktrig_ng_wfreq
+    ktrig_ng_grate = changed(kgrainrate)
+    cabbageSetValue "ng_grate_view", kgrainrate, ktrig_ng_grate
+    ktrig_ng_gdur = changed(kgraindur)
+    cabbageSetValue "ng_gdur_view", kgraindur, ktrig_ng_gdur
+    ktrig_ng_adr = changed(ka_d_ratio)
+    cabbageSetValue "ng_adr_view", ka_d_ratio, ktrig_ng_adr
+    ktrig_ng_sus = changed(ksustain_amount)
+    cabbageSetValue "ng_sus_view", ksustain_amount, ktrig_ng_sus
+    ktrig_ng_nlvl = changed(knoise_level)
+    cabbageSetValue "ng_nlvl_view", knoise_level, ktrig_ng_nlvl
+
+    a1 NoiseGrains kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level
+    outs a1, a1
+
 endin
 
 </CsInstruments>

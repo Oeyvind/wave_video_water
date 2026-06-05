@@ -5,6 +5,17 @@
     - pulse length (and shape)
     - bandpass center freq (x3, separately for each generator)
 
+* NoiseGrains refine:
+  - Amp in dB (for all oscillators)
+  - make playable and fun, haha
+  - grain masking, sequence of 1,2,3,4,5 for gain and channel
+  - bandpass cutoff and bandwidth, auto compensate level on bandwidth change
+  - stereo width
+  - master pan 
+    - hard pan left right 
+    - reduce width when pan is > 0.5 or < 0.5
+
+* Make modulator expansion as radio button, only one open at a time
 
 * Flow for the quadrants
   - debug: print the x and y values for the globals next to the Hz label
