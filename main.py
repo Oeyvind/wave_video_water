@@ -422,22 +422,25 @@ def draw_flow_overlay(frame, flow, color=(30, 180, 255), disp_scale=2.0):
 
 def _quadrant_vector_stats(flow_block):
     if flow_block.size == 0:
-        return 0.0, 0.0, False
+        return 0.0, 0.0, 0.0, 0.0, False
 
     dx = flow_block[..., 0]
     dy = flow_block[..., 1]
     mag = np.sqrt(dx * dx + dy * dy)
     active = mag > 0.12
     if not np.any(active):
-        return 0.0, 0.0, False
+        return 0.0, 0.0, 0.0, 0.0, False
 
     weights = mag[active]
+    sum_w = float(np.sum(weights))
     sum_x = float(np.sum(dx[active] * weights))
     sum_y = float(np.sum(dy[active] * weights))
+    mean_x = sum_x / max(sum_w, 1e-9)
+    mean_y = sum_y / max(sum_w, 1e-9)
 
     direction_deg = (np.degrees(np.arctan2(sum_y, sum_x)) + 360.0) % 360.0
     strength = float(np.median(weights))
-    return direction_deg, strength, True
+    return direction_deg, strength, mean_x, mean_y, True
 
 
 def _flow_arrow_centers(frame_h, frame_w):
@@ -495,9 +498,25 @@ def _draw_axial_arrow(img, center, dx, dy, color, thickness, tip_length):
     cv2.arrowedLine(img, p1, p0, color, thickness, tipLength=tip_length)
 
 
+def _unit_tip_xy01_from_direction(direction_deg):
+    """Convert arrow direction to unit-tip coordinates remapped to [0,1].
+
+    x01: left=0, right=1
+    y01: bottom=0, top=1
+    """
+    ux = float(np.cos(np.radians(direction_deg)))
+    uy = float(-np.sin(np.radians(direction_deg)))
+    x01 = float(np.clip((ux + 1.0) * 0.5, 0.0, 1.0))
+    y01 = float(np.clip((uy + 1.0) * 0.5, 0.0, 1.0))
+    return x01, y01
+
+
 def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_color=(120, 220, 255),
                               circle_color=(220, 220, 220), global_rate_hz=None, rate_side=None,
-                              axial=False):
+                              axial=False, quadrant_direction_overrides=None,
+                              global_direction_override=None,
+                              quadrant_magnitude_overrides=None,
+                              global_magnitude_override=None):
     if flow is None:
         return frame
 
@@ -516,7 +535,7 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
     ]
 
     for label, block, center in quadrants:
-        direction_deg, strength, has_motion = _quadrant_vector_stats(block)
+        direction_deg, strength, _mean_x, _mean_y, has_motion = _quadrant_vector_stats(block)
         radius = 34
         shifted_center = centers[label]
 
@@ -524,8 +543,16 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
 
         if has_motion:
             q_color = arrow_color
-            arrow_len = int(np.clip(16 + strength * 8.0, 16, 44))
-            _dir = direction_deg % 180.0 if axial else direction_deg
+            q_mag = strength
+            if quadrant_magnitude_overrides is not None and label in quadrant_magnitude_overrides:
+                q_mag = float(quadrant_magnitude_overrides[label])
+                arrow_len = int(np.clip(16 + q_mag * 40.0, 16, 44))
+            else:
+                arrow_len = int(np.clip(16 + q_mag * 8.0, 16, 44))
+            _dir_src = direction_deg
+            if quadrant_direction_overrides is not None and label in quadrant_direction_overrides:
+                _dir_src = float(quadrant_direction_overrides[label])
+            _dir = _dir_src % 180.0 if axial else _dir_src
             dx = int(np.cos(np.radians(_dir)) * arrow_len)
             dy = int(np.sin(np.radians(_dir)) * arrow_len)
             if axial:
@@ -533,21 +560,29 @@ def draw_quadrant_flow_arrows(frame, flow, arrow_color=(80, 190, 255), global_co
             else:
                 cv2.arrowedLine(out, shifted_center, (shifted_center[0] + dx, shifted_center[1] + dy), q_color, 2, tipLength=0.22)
 
+
+
     # Global summary arrow
-    g_direction_deg, g_strength, g_has_motion = _quadrant_vector_stats(flow)
+    g_direction_deg, g_strength, _g_mean_x, _g_mean_y, g_has_motion = _quadrant_vector_stats(flow)
     g_center = centers["G"]
     g_radius = 42
     cv2.circle(out, g_center, g_radius, circle_color, 1)
     if g_has_motion:
         g_color = global_color
-        g_len = int(np.clip(20 + g_strength * 10.0, 20, 56))
-        _gdir = g_direction_deg % 180.0 if axial else g_direction_deg
+        if global_magnitude_override is not None:
+            g_len = int(np.clip(20 + float(global_magnitude_override) * 48.0, 20, 56))
+        else:
+            g_len = int(np.clip(20 + g_strength * 10.0, 20, 56))
+        _gdir_src = g_direction_deg if global_direction_override is None else float(global_direction_override)
+        _gdir = _gdir_src % 180.0 if axial else _gdir_src
         g_dx = int(np.cos(np.radians(_gdir)) * g_len)
         g_dy = int(np.sin(np.radians(_gdir)) * g_len)
         if axial:
             _draw_axial_arrow(out, g_center, g_dx, g_dy, g_color, 3, 0.22)
         else:
             cv2.arrowedLine(out, g_center, (g_center[0] + g_dx, g_center[1] + g_dy), g_color, 3, tipLength=0.22)
+
+
 
     if global_rate_hz is not None and rate_side in ("left", "right"):
         rate_text = f"{float(global_rate_hz):.1f}Hz"
@@ -1038,6 +1073,14 @@ def make_display_frame(
             cv2.drawContours(out, straight_line_contours, -1, (0, 220, 255), 1)
 
     if flow_overlay != "off":
+        flow_data = analysis.get("flow_data") or {}
+        fast_qm = flow_data.get("quadrant_fast_metrics") or {}
+        slow_qm = flow_data.get("quadrant_slow_metrics") or {}
+        fast_q_dirs = {q: float((fast_qm.get(q) or {}).get("direction_deg", 0.0)) for q in ("UL", "UR", "LL", "LR")}
+        slow_q_dirs = {q: float((slow_qm.get(q) or {}).get("direction_deg", 0.0)) for q in ("UL", "UR", "LL", "LR")}
+        fast_q_mags = {q: float((fast_qm.get(q) or {}).get("activity", 0.0)) for q in ("UL", "UR", "LL", "LR")}
+        slow_q_mags = {q: float((slow_qm.get(q) or {}).get("activity", 0.0)) for q in ("UL", "UR", "LL", "LR")}
+
         fast_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_update_interval))
         slow_rate_hz = float(analyzer.fps) / max(1, int(analyzer.flow_slow_interval))
         fast_arrow_color = _rate_hz_to_color(fast_rate_hz)
@@ -1051,6 +1094,10 @@ def make_display_frame(
                                         circle_color=(200, 200, 200),
                                         global_rate_hz=fast_rate_hz, rate_side="right",
                                         axial=axial_flow,
+                                        quadrant_direction_overrides=fast_q_dirs,
+                                        global_direction_override=flow_data.get("fast_direction_deg"),
+                                        quadrant_magnitude_overrides=fast_q_mags,
+                                        global_magnitude_override=flow_data.get("fast_activity"),
                                         )
         # Slow flow: color keyed by slow analysis rate
         slow_disp_scale = 2.0 / max(1, analyzer.flow_slow_interval)
@@ -1061,9 +1108,11 @@ def make_display_frame(
                                         circle_color=(160, 160, 160),
                                         global_rate_hz=slow_rate_hz, rate_side="left",
                                         axial=axial_flow,
+                                        quadrant_direction_overrides=slow_q_dirs,
+                                        global_direction_override=flow_data.get("slow_direction_deg"),
+                                        quadrant_magnitude_overrides=slow_q_mags,
+                                        global_magnitude_override=flow_data.get("slow_activity"),
                                         )
-        # Adaptive arrow: quality-weighted blend of fast+slow, drawn on its own ring.
-        out = draw_adaptive_flow_arrow(out, analysis.get("flow_data"), axial=axial_flow)
         if texture_overlay:
             # Per-quadrant LBP triangles: shown with the texture overlay toggle (W).
             out = draw_quadrant_lbp_triangles(out, lbp_data)

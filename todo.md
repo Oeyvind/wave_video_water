@@ -1,3 +1,5 @@
+* S and T frequencies can be investigated, see chat log for CST
+
 * Audio gen idea
   - 3 bands of noise controlled by the temporal band activity
   - rhythmic pulse (granular like), so
@@ -15,15 +17,11 @@
     - hard pan left right 
     - reduce width when pan is > 0.5 or < 0.5
 
-* Make modulator expansion as radio button, only one open at a time
+* MAke 3x Noise grains
 
-* Flow for the quadrants
-  - debug: print the x and y values for the globals next to the Hz label
-
-* Contour:
-  - skip contours with area > 10% of image, as preprocess before everything else
-
-* Readme for key control switches etc
+* Audio processing
+  - divide 3 bands, set cutoff 1 and 2
+  - separate pitch mod per band
 
 * Waveform transfer
   - downsample (how much) ... to 512 samples?
@@ -31,6 +29,19 @@
     - make 8 of these OSC "channels" (= 128 samples)
     - assemble waveform in Csound (4x transfer to make complete waveform)
     - then crossfade from old to new
+
+* Midi synth idea
+  - Zyne harmonics, control pitch dev with wave param
+    - same parm, per quadrant?
+    - several parm globally
+
+* Make modulator expansion as radio button, only one open at a time
+
+* Contour:
+  - skip contours with area > 10% of image, as preprocess before everything else
+
+* Readme for key control switches etc
+
 
 
 

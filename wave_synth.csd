@@ -1,5 +1,5 @@
 <Cabbage>
-form caption("Wave Synth") size(1260, 800), guiMode("queue"), pluginId("wSyn"), colour(20, 20, 20)
+form caption("Wave Synth") size(1260, 1100), guiMode("queue"), pluginId("wSyn"), colour(20, 20, 20)
 
 ; --- Instrument 31 controls ---
 
@@ -246,7 +246,7 @@ label bounds(1204, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize
 
 groupbox bounds(5, 300, 1250, 290), channel("ngGroup"), text("Instr32: NoiseGrains + Mod Routing"), colour(40, 48, 58), fontColour(220, 220, 220), outlineColour(80, 100, 92) {
 button bounds(3, 50, 36, 24), channel("inst32_on"), text("On"), value(0), colour:0("#3c4652"), colour:1("#2ecc71"), fontColour("white")
-button bounds(3, 78, 36, 18), channel("ng_collapse"), text("+","-"), value(1), colour:0(60,30,30), colour:1(30,60,30), fontColour("white")
+button bounds(3, 78, 36, 18), channel("ng_collapse"), text("+","-"), value(0), colour:0(60,30,30), colour:1(30,60,30), fontColour("white")
 button bounds(32, 142, 6, 34), channel("ng_master_reset"), value(0), colour:0(100,20,20), colour:1(200,40,40)
 button bounds(41, 142, 6, 34), channel("ng_master_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
 ; Module ng_amp (Amp, col 1 - has labels)
@@ -316,8 +316,8 @@ nslider bounds(324, 214, 50, 16), channel("m_ng_gdur_gain"), text(""), range(-99
 nslider bounds(324, 232, 50, 16), channel("m_ng_gdur_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
 combobox bounds(324, 250, 50, 16), channel("m_ng_gdur_mode"), value(1), text("Add","Mul")
 ; Module ng_adr (A/D Ratio, col 5 - has labels)
-rslider channel("ng_adr_view"), bounds(416, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
-rslider channel("ng_adr_base"), bounds(416, 29, 70, 70), text("A/D"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+rslider channel("ng_adr_view"), bounds(416, 25, 70, 70), text(""), range(0.005, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_adr_base"), bounds(416, 29, 70, 70), text("A/D"), range(0.005, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
 combobox bounds(416, 102, 85, 18), channel("m_ng_adr_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
 combobox bounds(416, 122, 85, 18), channel("m_ng_adr_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(416, 142, 50, 16), channel("m_ng_adr_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
@@ -336,8 +336,8 @@ label bounds(468, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize
 combobox bounds(416, 250, 50, 16), channel("m_ng_adr_mode"), value(1), text("Add","Mul")
 label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
 ; Module ng_sus (Sustain, col 6 - no labels)
-rslider channel("ng_sus_view"), bounds(508, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
-rslider channel("ng_sus_base"), bounds(508, 29, 70, 70), text("Sustain"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
+rslider channel("ng_sus_view"), bounds(508, 25, 70, 70), text(""), range(0, 0.99, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ng_sus_base"), bounds(508, 29, 70, 70), text("Sustain"), range(0, 0.99, 0.5, 1, 0.001), trackerColour(40,80,200)
 combobox bounds(508, 102, 85, 18), channel("m_ng_sus_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
 combobox bounds(508, 122, 85, 18), channel("m_ng_sus_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(508, 142, 50, 16), channel("m_ng_sus_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
@@ -368,15 +368,159 @@ nslider bounds(600, 232, 50, 16), channel("m_ng_nlvl_lp"), text(""), range(0.1,2
 label bounds(652, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
 combobox bounds(600, 250, 50, 16), channel("m_ng_nlvl_mode"), value(1), text("Add","Mul")
 label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+
+rslider channel("GainMask"), bounds(690, 25, 70, 70), text("GainMask"), range(1,4, 1, 1);, markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ChanMask"), bounds(780, 25, 70, 70), text("ChanMask"), range(1,4, 1, 1);, markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 }
 
-csoundoutput bounds(5, 595, 1250, 200)
+groupbox bounds(5, 595, 1250, 290), channel("ccMapGroup"), text("Instr33: Video Mod -> MIDI CC Mapper"), colour(48, 44, 58), fontColour(220, 220, 220), outlineColour(88, 88, 102) {
+button bounds(3, 50, 36, 24), channel("ccmap_on"), text("On"), value(1), colour:0("#3c4652"), colour:1("#2ecc71"), fontColour("white")
+button bounds(3, 78, 36, 18), channel("ccmap_collapse"), text("+","-"), value(0), colour:0(60,30,30), colour:1(30,60,30), fontColour("white")
+button bounds(32, 142, 6, 34), channel("ccm_master_reset"), value(0), colour:0(100,20,20), colour:1(200,40,40)
+button bounds(41, 142, 6, 34), channel("ccm_master_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+
+; CC Map 1 (CC32)
+rslider channel("ccm1_view"), bounds(48, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm1_base"), bounds(48, 29, 70, 70), text("CC32"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(48, 102, 85, 18), channel("m_ccm1_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(48, 122, 85, 18), channel("m_ccm1_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(48, 142, 50, 16), channel("m_ccm1_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 160, 50, 16), channel("m_ccm1_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(100, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(99, 142, 6, 34), channel("m_ccm1_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(48, 178, 50, 16), channel("m_ccm1_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(100, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 196, 50, 16), channel("m_ccm1_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(48, 214, 50, 16), channel("m_ccm1_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+label bounds(100, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(100, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(48, 232, 50, 16), channel("m_ccm1_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(100, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(48, 250, 50, 16), channel("m_ccm1_mode"), value(1), text("Add","Mul")
+label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+
+; CC Map 2..8 (CC33..CC39)
+rslider channel("ccm2_view"), bounds(140, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm2_base"), bounds(140, 29, 70, 70), text("CC33"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(140, 102, 85, 18), channel("m_ccm2_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(140, 122, 85, 18), channel("m_ccm2_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(140, 142, 50, 16), channel("m_ccm2_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(140, 160, 50, 16), channel("m_ccm2_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(191, 142, 6, 34), channel("m_ccm2_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(140, 178, 50, 16), channel("m_ccm2_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(140, 196, 50, 16), channel("m_ccm2_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(140, 214, 50, 16), channel("m_ccm2_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+nslider bounds(140, 232, 50, 16), channel("m_ccm2_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(140, 250, 50, 16), channel("m_ccm2_mode"), value(1), text("Add","Mul")
+
+rslider channel("ccm3_view"), bounds(232, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm3_base"), bounds(232, 29, 70, 70), text("CC34"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(232, 102, 85, 18), channel("m_ccm3_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(232, 122, 85, 18), channel("m_ccm3_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(232, 142, 50, 16), channel("m_ccm3_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 160, 50, 16), channel("m_ccm3_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(284, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(283, 142, 6, 34), channel("m_ccm3_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(232, 178, 50, 16), channel("m_ccm3_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(284, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 196, 50, 16), channel("m_ccm3_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(232, 214, 50, 16), channel("m_ccm3_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+label bounds(284, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(284, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(232, 232, 50, 16), channel("m_ccm3_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(284, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(232, 250, 50, 16), channel("m_ccm3_mode"), value(1), text("Add","Mul")
+label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+
+rslider channel("ccm4_view"), bounds(324, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm4_base"), bounds(324, 29, 70, 70), text("CC35"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(324, 102, 85, 18), channel("m_ccm4_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(324, 122, 85, 18), channel("m_ccm4_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(324, 142, 50, 16), channel("m_ccm4_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(324, 160, 50, 16), channel("m_ccm4_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(375, 142, 6, 34), channel("m_ccm4_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(324, 178, 50, 16), channel("m_ccm4_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(324, 196, 50, 16), channel("m_ccm4_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(324, 214, 50, 16), channel("m_ccm4_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+nslider bounds(324, 232, 50, 16), channel("m_ccm4_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(324, 250, 50, 16), channel("m_ccm4_mode"), value(1), text("Add","Mul")
+
+rslider channel("ccm5_view"), bounds(416, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm5_base"), bounds(416, 29, 70, 70), text("CC36"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(416, 102, 85, 18), channel("m_ccm5_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(416, 122, 85, 18), channel("m_ccm5_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(416, 142, 50, 16), channel("m_ccm5_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 160, 50, 16), channel("m_ccm5_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(468, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(467, 142, 6, 34), channel("m_ccm5_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(416, 178, 50, 16), channel("m_ccm5_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(468, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 196, 50, 16), channel("m_ccm5_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(416, 214, 50, 16), channel("m_ccm5_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+label bounds(468, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(468, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(416, 232, 50, 16), channel("m_ccm5_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(468, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(416, 250, 50, 16), channel("m_ccm5_mode"), value(1), text("Add","Mul")
+label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+
+rslider channel("ccm6_view"), bounds(508, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm6_base"), bounds(508, 29, 70, 70), text("CC37"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(508, 102, 85, 18), channel("m_ccm6_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(508, 122, 85, 18), channel("m_ccm6_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(508, 142, 50, 16), channel("m_ccm6_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(508, 160, 50, 16), channel("m_ccm6_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(559, 142, 6, 34), channel("m_ccm6_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(508, 178, 50, 16), channel("m_ccm6_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(508, 196, 50, 16), channel("m_ccm6_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(508, 214, 50, 16), channel("m_ccm6_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+nslider bounds(508, 232, 50, 16), channel("m_ccm6_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(508, 250, 50, 16), channel("m_ccm6_mode"), value(1), text("Add","Mul")
+
+rslider channel("ccm7_view"), bounds(600, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm7_base"), bounds(600, 29, 70, 70), text("CC38"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(600, 102, 85, 18), channel("m_ccm7_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(600, 122, 85, 18), channel("m_ccm7_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(600, 142, 50, 16), channel("m_ccm7_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 160, 50, 16), channel("m_ccm7_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+label bounds(652, 160, 50, 16), text("Max"), fontColour(220,220,220), fontSize(13)
+button bounds(651, 142, 6, 34), channel("m_ccm7_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(600, 178, 50, 16), channel("m_ccm7_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+label bounds(652, 178, 50, 16), text("Exp"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 196, 50, 16), channel("m_ccm7_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(600, 214, 50, 16), channel("m_ccm7_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+label bounds(652, 196, 50, 16), text("Offs"), fontColour(220,220,220), fontSize(13)
+label bounds(652, 214, 50, 16), text("Gain"), fontColour(220,220,220), fontSize(13)
+nslider bounds(600, 232, 50, 16), channel("m_ccm7_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+label bounds(652, 232, 50, 16), text("LP Hz"), fontColour(220,220,220), fontSize(13)
+combobox bounds(600, 250, 50, 16), channel("m_ccm7_mode"), value(1), text("Add","Mul")
+label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(13)
+
+rslider channel("ccm8_view"), bounds(692, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
+rslider channel("ccm8_base"), bounds(692, 29, 70, 70), text("CC39"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
+combobox bounds(692, 102, 85, 18), channel("m_ccm8_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC")
+combobox bounds(692, 122, 85, 18), channel("m_ccm8_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
+nslider bounds(692, 142, 50, 16), channel("m_ccm8_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
+nslider bounds(692, 160, 50, 16), channel("m_ccm8_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
+button bounds(743, 142, 6, 34), channel("m_ccm8_cal"), value(0), colour:0("#3c4652"), colour:1("#2ecc71")
+nslider bounds(692, 178, 50, 16), channel("m_ccm8_exp"), text(""), range(0.1,4,1,1,0.001), fontSize(13)
+nslider bounds(692, 196, 50, 16), channel("m_ccm8_offs"), text(""), range(-1,1,0,1,0.001), fontSize(13)
+nslider bounds(692, 214, 50, 16), channel("m_ccm8_gain"), text(""), range(-127,127,0,1,0.001), fontSize(13)
+nslider bounds(692, 232, 50, 16), channel("m_ccm8_lp"), text(""), range(0.1,20,20,1,0.01), fontSize(13)
+combobox bounds(692, 250, 50, 16), channel("m_ccm8_mode"), value(1), text("Add","Mul")
+}
+
+csoundoutput bounds(5, 890, 1250, 200), channel("csoundoutput")
 
 </Cabbage>
 
 <CsoundSynthesizer>
 <CsOptions>
--n -d
+-n -d -+rtmidi=NULL -Q0 -m0d
 </CsOptions>
 <CsInstruments>
 
@@ -509,9 +653,7 @@ opcode GetModSource01, k, kk
 
     if (ksel >= 1.5) then
         ksrc chnget Schan
-        if (ksel >= 12.5 && ksel < 16.5) then
-            ksrc = (ksrc + 1.0) * 0.5
-        elseif (ksel >= 17.5 && ksel < 18.5) then
+        if (ksel >= 17.5 && ksel < 18.5) then
             ksrc = (ksrc + 1.0) * 0.5
         endif
     endif
@@ -618,8 +760,8 @@ opcode ApplyMod, k, Skkkkkkkkkkk
     xout kout
 endop
 
-opcode NoiseGrains, a, kkkkkkk
-  kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level xin
+opcode NoiseGrains, aa, kkkkkkkkk
+  kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level, kgainmask, kchanmask xin
 
 ; grain rate
     agrainrate = kgrainrate
@@ -634,8 +776,8 @@ opcode NoiseGrains, a, kkkkkkk
 
 	ienv_attack	= giSigmoRise 			; grain attack shape (from table)
 	ienv_decay = giSigmoFall 			; grain decay shape (from table)
-	ksustain_amount	= 0.0					  ; balance between enveloped time(attack+decay) and sustain level time, 0.0 = no time at sustain level
-	ka_d_ratio = 0.1      					; balance between attack time and decay time, 0.0 = zero attack time and full decay time
+	;ksustain_amount	= 0.0					  ; balance between enveloped time(attack+decay) and sustain level time, 0.0 = no time at sustain level
+	;ka_d_ratio = 0.1      					; balance between attack time and decay time, 0.0 = zero attack time and full decay time
 	kenv2amt = 0                    ; amount of secondary enveloping per grain (e.g. for fof synthesis)
 	ienv2tab = giExpFall 				  ; secondary grain shape (from table), enveloping the whole grain if used
 
@@ -670,11 +812,25 @@ opcode NoiseGrains, a, kkkkkkk
 	kchroma = 1	
 
 	; gain masking table, amplitude for individual grains
-	igainmasks	ftgentmp	0, 0, 16, -2, 0, 0, 1
+    igainmasks ftgentmp 0, 0, 16, -2, 0, 11,  1,1,1,1,1,1,1,1,1,1,1,1
+    igainmask1 ftgentmp 0, 0, 16, -2, 0, 11,  1,1,1,1,1,1,1,1,1,1,1,1
+    igainmask2 ftgentmp 0, 0, 16, -2, 0, 11,  1,0.5,1,0.5,1,0.5,1,0.5,1,0.5,1,0.5
+    igainmask3 ftgentmp 0, 0, 16, -2, 0, 11,  1,0.5,0.25,1,0.5,0.25,1,0.5,0.25,1,0.5,0.25
+    igainmask4 ftgentmp 0, 0, 16, -2, 0, 11,  1,0.5,0.25,0.1,1,0.5,0.25,0.1,1,0.5,0.25,0.1
+    igainmaskstab ftgentmp 0, 0, 4, -2, igainmask1, igainmask2, igainmask3, igainmask4;, igainmask5, igainmask6, igainmask7, igainmask8
+    ftmorf kgainmask-1, igainmaskstab, igainmasks
+    
 
 	; channel masking table, output routing for individual grains (zero based, a value of 0.0 routes to output 1)
-	ichanmasks	ftgentmp	0, 0, 16, -2,  0, 0,  0.5
-	
+    ichanmasks ftgentmp 0, 0, 16, -2, 0, 11, 0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5
+    ichanmask1 ftgentmp 0, 0, 16, -2, 0, 11, 0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5
+	ichanmask2 ftgentmp 0, 0, 16, -2, 0, 11, 0,1,0,1,0,1,0,1,0,1,0,1
+    ichanmask3 ftgentmp 0, 0, 16, -2, 0, 11, 0,0.5,1,0,0.5,1,0,0.5,1,0,0.5,1
+    ichanmask4 ftgentmp 0, 0, 16, -2, 0, 11, 0,0.5,1,0.5,0,0.5,1,0.5,0,0.5,1,0.5
+    ichanmaskstab ftgentmp 0, 0, 4, -2, ichanmask1, ichanmask2, ichanmask3, ichanmask4;, ichanmask5, ichanmask6, ichanmask7, ichanmask8
+    ftmorf kchanmask-1, ichanmaskstab, ichanmasks
+
+
 	; random masking (muting) of individual grains
 	krandommask	=0;chnget "RandMask"
 
@@ -688,7 +844,7 @@ opcode NoiseGrains, a, kkkkkkk
 ; system parameter
 	imax_grains	= 100				; max number of grains per k-period
         
-	a1,a2,a3,a4,a5,a6,a7,a8	partikkel \					; 					
+	a1,a2	partikkel \					; 					
 			agrainrate, \						; grains per second			
 			kdistribution, idisttab, async, \			; synchronous/asynchronous		
 			kenv2amt, ienv2tab, ienv_attack, ienv_decay, \		; grain envelope (advanced)		
@@ -707,35 +863,85 @@ opcode NoiseGrains, a, kkkkkkk
 			kwavekey1, kwavekey2, kwavekey3, kwavekey4, \		; individual transpose for each source
 			imax_grains						; system parameter (advanced)
   
-  xout(a1)
+  xout(a1,a2)
 endop
 
 ; GUI handling and button -> instrument events
 instr 1
     kmod_col  chnget "mod_collapse"
-    ktrig_col changed kmod_col
-    if ktrig_col == 1 then
-        if kmod_col > 0.5 then
-            cabbageSet ktrig_col, "modGroup", "bounds(5, 5, 1250, 290)"
-            cabbageSet ktrig_col, "ngGroup", "bounds(5, 300, 1250, 290)"
-        else
-            cabbageSet ktrig_col, "modGroup", "bounds(5, 5, 1250, 100)"
-            cabbageSet ktrig_col, "ngGroup", "bounds(5, 105, 1250, 290)"
+    kng_col  chnget "ng_collapse"
+    kccm_col chnget "ccmap_collapse"
+
+    ktrig_mod changed kmod_col
+    ktrig_ng changed kng_col
+    ktrig_ccm changed kccm_col
+
+    ; Only one mod section can be expanded at a time.
+    if (ktrig_mod == 1 && kmod_col > 0.5) then
+        if (kng_col > 0.5) then
+            cabbageSetValue "ng_collapse", 0, 1
+            kng_col = 0
+        endif
+        if (kccm_col > 0.5) then
+            cabbageSetValue "ccmap_collapse", 0, 1
+            kccm_col = 0
+        endif
+    elseif (ktrig_ng == 1 && kng_col > 0.5) then
+        if (kmod_col > 0.5) then
+            cabbageSetValue "mod_collapse", 0, 1
+            kmod_col = 0
+        endif
+        if (kccm_col > 0.5) then
+            cabbageSetValue "ccmap_collapse", 0, 1
+            kccm_col = 0
+        endif
+    elseif (ktrig_ccm == 1 && kccm_col > 0.5) then
+        if (kmod_col > 0.5) then
+            cabbageSetValue "mod_collapse", 0, 1
+            kmod_col = 0
+        endif
+        if (kng_col > 0.5) then
+            cabbageSetValue "ng_collapse", 0, 1
+            kng_col = 0
         endif
     endif
 
-    kng_col  chnget "ng_collapse"
-    ktrig_ngcol changed kng_col
-    if ktrig_ngcol == 1 then
-        if kng_col > 0.5 then
-            cabbageSet ktrig_ngcol, "ngGroup", "bounds(5, 300, 1250, 290)"
+    kboot init 1
+    ktrig_layout = (ktrig_mod + ktrig_ng + ktrig_ccm)
+    if (kboot == 1 || ktrig_layout > 0) then
+        if (kmod_col > 0.5) then
+            cabbageSet 1, "modGroup", "bounds(5, 5, 1250, 290)"
+            cabbageSet 1, "ngGroup", "bounds(5, 300, 1250, 100)"
+            cabbageSet 1, "ccMapGroup", "bounds(5, 405, 1250, 100)"
+            ky_ccm = 405
+        elseif (kng_col > 0.5) then
+            cabbageSet 1, "modGroup", "bounds(5, 5, 1250, 100)"
+            cabbageSet 1, "ngGroup", "bounds(5, 110, 1250, 290)"
+            cabbageSet 1, "ccMapGroup", "bounds(5, 405, 1250, 100)"
+            ky_ccm = 405
+        elseif (kccm_col > 0.5) then
+            cabbageSet 1, "modGroup", "bounds(5, 5, 1250, 100)"
+            cabbageSet 1, "ngGroup", "bounds(5, 110, 1250, 100)"
+            cabbageSet 1, "ccMapGroup", "bounds(5, 215, 1250, 290)"
+            ky_ccm = 215
         else
-            cabbageSet ktrig_ngcol, "ngGroup", "bounds(5, 300, 1250, 100)"
+            cabbageSet 1, "modGroup", "bounds(5, 5, 1250, 100)"
+            cabbageSet 1, "ngGroup", "bounds(5, 110, 1250, 100)"
+            cabbageSet 1, "ccMapGroup", "bounds(5, 215, 1250, 100)"
+            ky_ccm = 215
         endif
+
+        kh_ccm_vis = (kccm_col > 0.5 ? 290 : 100)
+        kgap_out = (kccm_col > 0.5 ? 12 : 5)
+        ky_out = ky_ccm + kh_ccm_vis + kgap_out
+        Sout sprintfk "bounds(5, %.0f, 1250, 200)", ky_out
+        cabbageSet 1, "csoundoutput", Sout
+        kboot = 0
     endif
 
     ButtonEvent "inst31_on", 31, 0
     ButtonEvent "inst32_on", 32, 0
+    ButtonEvent "ccmap_on", 33, 0
 
     kmaster_reset chnget "master_reset"
     ktrig_mr changed kmaster_reset
@@ -904,6 +1110,78 @@ instr 1
             cabbageSetValue "m_ng_adr_cal",   0, 1
             cabbageSetValue "m_ng_sus_cal",   0, 1
             cabbageSetValue "m_ng_nlvl_cal",  0, 1
+        endif
+    endif
+
+    ; instr 33 master reset
+    kccm_reset chnget "ccm_master_reset"
+    ktrig_ccmr changed kccm_reset
+    if (ktrig_ccmr > 0 && kccm_reset > 0.5) then
+        cabbageSetValue "m_ccm1_min", 0, 1
+        cabbageSetValue "m_ccm1_max", 1, 1
+        cabbageSetValue "m_ccm2_min", 0, 1
+        cabbageSetValue "m_ccm2_max", 1, 1
+        cabbageSetValue "m_ccm3_min", 0, 1
+        cabbageSetValue "m_ccm3_max", 1, 1
+        cabbageSetValue "m_ccm4_min", 0, 1
+        cabbageSetValue "m_ccm4_max", 1, 1
+        cabbageSetValue "m_ccm5_min", 0, 1
+        cabbageSetValue "m_ccm5_max", 1, 1
+        cabbageSetValue "m_ccm6_min", 0, 1
+        cabbageSetValue "m_ccm6_max", 1, 1
+        cabbageSetValue "m_ccm7_min", 0, 1
+        cabbageSetValue "m_ccm7_max", 1, 1
+        cabbageSetValue "m_ccm8_min", 0, 1
+        cabbageSetValue "m_ccm8_max", 1, 1
+        cabbageSetValue "ccm_master_reset", 0, 1
+    endif
+
+    ; instr 33 master cal
+    kccm_cal chnget "ccm_master_cal"
+    ktrig_ccmc changed kccm_cal
+    if (ktrig_ccmc > 0) then
+        kccm1_s chnget "m_ccm1_src"
+        kccm2_s chnget "m_ccm2_src"
+        kccm3_s chnget "m_ccm3_src"
+        kccm4_s chnget "m_ccm4_src"
+        kccm5_s chnget "m_ccm5_src"
+        kccm6_s chnget "m_ccm6_src"
+        kccm7_s chnget "m_ccm7_src"
+        kccm8_s chnget "m_ccm8_src"
+        if (kccm_cal > 0.5) then
+            if (kccm1_s > 1.5) then
+                cabbageSetValue "m_ccm1_cal", 1, 1
+            endif
+            if (kccm2_s > 1.5) then
+                cabbageSetValue "m_ccm2_cal", 1, 1
+            endif
+            if (kccm3_s > 1.5) then
+                cabbageSetValue "m_ccm3_cal", 1, 1
+            endif
+            if (kccm4_s > 1.5) then
+                cabbageSetValue "m_ccm4_cal", 1, 1
+            endif
+            if (kccm5_s > 1.5) then
+                cabbageSetValue "m_ccm5_cal", 1, 1
+            endif
+            if (kccm6_s > 1.5) then
+                cabbageSetValue "m_ccm6_cal", 1, 1
+            endif
+            if (kccm7_s > 1.5) then
+                cabbageSetValue "m_ccm7_cal", 1, 1
+            endif
+            if (kccm8_s > 1.5) then
+                cabbageSetValue "m_ccm8_cal", 1, 1
+            endif
+        else
+            cabbageSetValue "m_ccm1_cal", 0, 1
+            cabbageSetValue "m_ccm2_cal", 0, 1
+            cabbageSetValue "m_ccm3_cal", 0, 1
+            cabbageSetValue "m_ccm4_cal", 0, 1
+            cabbageSetValue "m_ccm5_cal", 0, 1
+            cabbageSetValue "m_ccm6_cal", 0, 1
+            cabbageSetValue "m_ccm7_cal", 0, 1
+            cabbageSetValue "m_ccm8_cal", 0, 1
         endif
     endif
 endin
@@ -1081,7 +1359,7 @@ read_flow_fast:
     if (ktr == 1) then
         kfrad = kfdeg * $M_PI / 180
         chnset cos(kfrad) / 2 + 0.5, "flow_fast_x_0"
-        chnset sin(kfrad) / 2 + 0.5, "flow_fast_y_0"
+        chnset (-sin(kfrad)) / 2 + 0.5, "flow_fast_y_0"
         chnset kfmag, "flow_fast_mag_0"
         kgoto read_flow_fast
     endif
@@ -1091,7 +1369,7 @@ read_flow_slow:
     if (ktr == 1) then
         ksrad = ksdeg * $M_PI / 180
         chnset cos(ksrad) / 2 + 0.5, "flow_slow_x_0"
-        chnset sin(ksrad) / 2 + 0.5, "flow_slow_y_0"
+        chnset (-sin(ksrad)) / 2 + 0.5, "flow_slow_y_0"
         chnset ksmag, "flow_slow_mag_0"
         kgoto read_flow_slow
     endif
@@ -1102,19 +1380,19 @@ read_flow_fast_quad:
     if (ktr == 1) then
         kfq1r = kfq1d * $M_PI / 180
         chnset cos(kfq1r) / 2 + 0.5, "flow_fast_x_1"
-        chnset sin(kfq1r) / 2 + 0.5, "flow_fast_y_1"
+        chnset (-sin(kfq1r)) / 2 + 0.5, "flow_fast_y_1"
         chnset kfq1a, "flow_fast_mag_1"
         kfq2r = kfq2d * $M_PI / 180
         chnset cos(kfq2r) / 2 + 0.5, "flow_fast_x_2"
-        chnset sin(kfq2r) / 2 + 0.5, "flow_fast_y_2"
+        chnset (-sin(kfq2r)) / 2 + 0.5, "flow_fast_y_2"
         chnset kfq2a, "flow_fast_mag_2"
         kfq3r = kfq3d * $M_PI / 180
         chnset cos(kfq3r) / 2 + 0.5, "flow_fast_x_3"
-        chnset sin(kfq3r) / 2 + 0.5, "flow_fast_y_3"
+        chnset (-sin(kfq3r)) / 2 + 0.5, "flow_fast_y_3"
         chnset kfq3a, "flow_fast_mag_3"
         kfq4r = kfq4d * $M_PI / 180
         chnset cos(kfq4r) / 2 + 0.5, "flow_fast_x_4"
-        chnset sin(kfq4r) / 2 + 0.5, "flow_fast_y_4"
+        chnset (-sin(kfq4r)) / 2 + 0.5, "flow_fast_y_4"
         chnset kfq4a, "flow_fast_mag_4"
         kgoto read_flow_fast_quad
     endif
@@ -1125,19 +1403,19 @@ read_flow_slow_quad:
     if (ktr == 1) then
         ksq1r = ksq1d * $M_PI / 180
         chnset cos(ksq1r) / 2 + 0.5, "flow_slow_x_1"
-        chnset sin(ksq1r) / 2 + 0.5, "flow_slow_y_1"
+        chnset (-sin(ksq1r)) / 2 + 0.5, "flow_slow_y_1"
         chnset ksq1a, "flow_slow_mag_1"
         ksq2r = ksq2d * $M_PI / 180
         chnset cos(ksq2r) / 2 + 0.5, "flow_slow_x_2"
-        chnset sin(ksq2r) / 2 + 0.5, "flow_slow_y_2"
+        chnset (-sin(ksq2r)) / 2 + 0.5, "flow_slow_y_2"
         chnset ksq2a, "flow_slow_mag_2"
         ksq3r = ksq3d * $M_PI / 180
         chnset cos(ksq3r) / 2 + 0.5, "flow_slow_x_3"
-        chnset sin(ksq3r) / 2 + 0.5, "flow_slow_y_3"
+        chnset (-sin(ksq3r)) / 2 + 0.5, "flow_slow_y_3"
         chnset ksq3a, "flow_slow_mag_3"
         ksq4r = ksq4d * $M_PI / 180
         chnset cos(ksq4r) / 2 + 0.5, "flow_slow_x_4"
-        chnset sin(ksq4r) / 2 + 0.5, "flow_slow_y_4"
+        chnset (-sin(ksq4r)) / 2 + 0.5, "flow_slow_y_4"
         chnset ksq4a, "flow_slow_mag_4"
         kgoto read_flow_slow_quad
     endif
@@ -1674,15 +1952,197 @@ instr 32
     ktrig_ng_nlvl = changed(knoise_level)
     cabbageSetValue "ng_nlvl_view", knoise_level, ktrig_ng_nlvl
 
-    a1 NoiseGrains kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level
-    outs a1, a1
+    kgainmask chnget "GainMask" 
+    kchanmask chnget "ChanMask"
 
+    a1,a2 NoiseGrains kamp, kwavfreq, kgrainrate, kgraindur, ka_d_ratio, ksustain_amount, knoise_level, kgainmask, kchanmask
+    outs a1, a2
+
+endin
+
+instr 33
+    kb1 chnget "ccm1_base"
+    kb2 chnget "ccm2_base"
+    kb3 chnget "ccm3_base"
+    kb4 chnget "ccm4_base"
+    kb5 chnget "ccm5_base"
+    kb6 chnget "ccm6_base"
+    kb7 chnget "ccm7_base"
+    kb8 chnget "ccm8_base"
+
+    ks init 0
+    kmin init 0
+    kmax init 1
+    kexp init 1
+    ko init 0
+    kg init 0
+    ka init 1
+    km init 1
+    kc init 0
+    klp init 20
+
+    ks chnget "m_ccm1_src"
+    kmin chnget "m_ccm1_min"
+    kmax chnget "m_ccm1_max"
+    kexp chnget "m_ccm1_exp"
+    ko chnget "m_ccm1_offs"
+    kg chnget "m_ccm1_gain"
+    ka chnget "m_ccm1_area"
+    km chnget "m_ccm1_mode"
+    kc chnget "m_ccm1_cal"
+    klp chnget "m_ccm1_lp"
+    k1 ApplyMod "ccm1", kb1, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm2_src"
+    kmin chnget "m_ccm2_min"
+    kmax chnget "m_ccm2_max"
+    kexp chnget "m_ccm2_exp"
+    ko chnget "m_ccm2_offs"
+    kg chnget "m_ccm2_gain"
+    ka chnget "m_ccm2_area"
+    km chnget "m_ccm2_mode"
+    kc chnget "m_ccm2_cal"
+    klp chnget "m_ccm2_lp"
+    k2 ApplyMod "ccm2", kb2, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm3_src"
+    kmin chnget "m_ccm3_min"
+    kmax chnget "m_ccm3_max"
+    kexp chnget "m_ccm3_exp"
+    ko chnget "m_ccm3_offs"
+    kg chnget "m_ccm3_gain"
+    ka chnget "m_ccm3_area"
+    km chnget "m_ccm3_mode"
+    kc chnget "m_ccm3_cal"
+    klp chnget "m_ccm3_lp"
+    k3 ApplyMod "ccm3", kb3, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm4_src"
+    kmin chnget "m_ccm4_min"
+    kmax chnget "m_ccm4_max"
+    kexp chnget "m_ccm4_exp"
+    ko chnget "m_ccm4_offs"
+    kg chnget "m_ccm4_gain"
+    ka chnget "m_ccm4_area"
+    km chnget "m_ccm4_mode"
+    kc chnget "m_ccm4_cal"
+    klp chnget "m_ccm4_lp"
+    k4 ApplyMod "ccm4", kb4, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm5_src"
+    kmin chnget "m_ccm5_min"
+    kmax chnget "m_ccm5_max"
+    kexp chnget "m_ccm5_exp"
+    ko chnget "m_ccm5_offs"
+    kg chnget "m_ccm5_gain"
+    ka chnget "m_ccm5_area"
+    km chnget "m_ccm5_mode"
+    kc chnget "m_ccm5_cal"
+    klp chnget "m_ccm5_lp"
+    k5 ApplyMod "ccm5", kb5, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm6_src"
+    kmin chnget "m_ccm6_min"
+    kmax chnget "m_ccm6_max"
+    kexp chnget "m_ccm6_exp"
+    ko chnget "m_ccm6_offs"
+    kg chnget "m_ccm6_gain"
+    ka chnget "m_ccm6_area"
+    km chnget "m_ccm6_mode"
+    kc chnget "m_ccm6_cal"
+    klp chnget "m_ccm6_lp"
+    k6 ApplyMod "ccm6", kb6, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm7_src"
+    kmin chnget "m_ccm7_min"
+    kmax chnget "m_ccm7_max"
+    kexp chnget "m_ccm7_exp"
+    ko chnget "m_ccm7_offs"
+    kg chnget "m_ccm7_gain"
+    ka chnget "m_ccm7_area"
+    km chnget "m_ccm7_mode"
+    kc chnget "m_ccm7_cal"
+    klp chnget "m_ccm7_lp"
+    k7 ApplyMod "ccm7", kb7, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ks chnget "m_ccm8_src"
+    kmin chnget "m_ccm8_min"
+    kmax chnget "m_ccm8_max"
+    kexp chnget "m_ccm8_exp"
+    ko chnget "m_ccm8_offs"
+    kg chnget "m_ccm8_gain"
+    ka chnget "m_ccm8_area"
+    km chnget "m_ccm8_mode"
+    kc chnget "m_ccm8_cal"
+    klp chnget "m_ccm8_lp"
+    k8 ApplyMod "ccm8", kb8, ks, ka, kmin, kmax, kexp, ko, kg, km, kc, klp
+
+    ktr1 changed k1
+    cabbageSetValue "ccm1_view", k1, ktr1
+    ktr2 changed k2
+    cabbageSetValue "ccm2_view", k2, ktr2
+    ktr3 changed k3
+    cabbageSetValue "ccm3_view", k3, ktr3
+    ktr4 changed k4
+    cabbageSetValue "ccm4_view", k4, ktr4
+    ktr5 changed k5
+    cabbageSetValue "ccm5_view", k5, ktr5
+    ktr6 changed k6
+    cabbageSetValue "ccm6_view", k6, ktr6
+    ktr7 changed k7
+    cabbageSetValue "ccm7_view", k7, ktr7
+    ktr8 changed k8
+    cabbageSetValue "ccm8_view", k8, ktr8
+
+    kchan1 = 1
+    kv1 = int(limit(k1, 0, 127) + 0.5)
+    kv2 = int(limit(k2, 0, 127) + 0.5)
+    kv3 = int(limit(k3, 0, 127) + 0.5)
+    kv4 = int(limit(k4, 0, 127) + 0.5)
+    kv5 = int(limit(k5, 0, 127) + 0.5)
+    kv6 = int(limit(k6, 0, 127) + 0.5)
+    kv7 = int(limit(k7, 0, 127) + 0.5)
+    kv8 = int(limit(k8, 0, 127) + 0.5)
+
+    kchg1 changed kv1
+    if (kchg1 == 1) then
+        midiout 176, kchan1, 32, kv1
+    endif
+    kchg2 changed kv2
+    if (kchg2 == 1) then
+        midiout 176, kchan1, 33, kv2
+    endif
+    kchg3 changed kv3
+    if (kchg3 == 1) then
+        midiout 176, kchan1, 34, kv3
+    endif
+    kchg4 changed kv4
+    if (kchg4 == 1) then
+        midiout 176, kchan1, 35, kv4
+    endif
+    kchg5 changed kv5
+    if (kchg5 == 1) then
+        midiout 176, kchan1, 36, kv5
+    endif
+    kchg6 changed kv6
+    if (kchg6 == 1) then
+        midiout 176, kchan1, 37, kv6
+    endif
+    kchg7 changed kv7
+    if (kchg7 == 1) then
+        midiout 176, kchan1, 38, kv7
+    endif
+    kchg8 changed kv8
+    if (kchg8 == 1) then
+        midiout 176, kchan1, 39, kv8
+    endif
 endin
 
 </CsInstruments>
 <CsScore>
 i1 0 z
 i10 0 z
+i33 0 z
 </CsScore>
 </CsoundSynthesizer>
 

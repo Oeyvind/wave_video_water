@@ -1505,6 +1505,10 @@ class WaveAnalyzer:
 
     def _median_filter_direction_deg(self, key, direction_deg):
         """Median filter directional angle in degrees with unwrap to avoid 0/360 jumps."""
+        if key not in self._flow_dir_history:
+            self._flow_dir_history[key] = deque(maxlen=5)
+            self._flow_dir_unwrapped[key] = None
+
         deg = float(direction_deg) % 360.0
         prev = self._flow_dir_unwrapped.get(key)
         unwrapped = deg
@@ -1729,6 +1733,14 @@ class WaveAnalyzer:
                     "LR": self.last_flow[_hh:, _hw:],
                 }.items()
             }
+            for _q, _m in flow_data["quadrant_fast_metrics"].items():
+                _qkey = f"q_fast_{_q}"
+                if float(_m.get("activity", 0.0)) > 0.0:
+                    _m["direction_deg"] = self._median_filter_direction_deg(_qkey, _m.get("direction_deg", 0.0))
+                else:
+                    self._flow_dir_history[_qkey] = deque(maxlen=5)
+                    self._flow_dir_unwrapped[_qkey] = None
+                    _m["direction_deg"] = 0.0
         if self.last_flow_slow is not None:
             _n = float(self.flow_slow_interval)
             _sfh, _sfw = self.last_flow_slow.shape[:2]
@@ -1742,6 +1754,14 @@ class WaveAnalyzer:
                     "LR": self.last_flow_slow[_shh:, _shw:],
                 }.items()
             }
+            for _q, _m in flow_data["quadrant_slow_metrics"].items():
+                _qkey = f"q_slow_{_q}"
+                if float(_m.get("activity", 0.0)) > 0.0:
+                    _m["direction_deg"] = self._median_filter_direction_deg(_qkey, _m.get("direction_deg", 0.0))
+                else:
+                    self._flow_dir_history[_qkey] = deque(maxlen=5)
+                    self._flow_dir_unwrapped[_qkey] = None
+                    _m["direction_deg"] = 0.0
 
         self.last_flow_metrics = dict(flow_data)
         return flow_data
