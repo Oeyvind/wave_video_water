@@ -265,6 +265,21 @@ class WaveAnalyzer:
             "activity": 0.0,
             "confidence": 0.0,
         }
+        self.prev_activity_gray = None
+        self.activity_smoothed = {
+            "global": 0.0,
+            "UL": 0.0,
+            "UR": 0.0,
+            "LL": 0.0,
+            "LR": 0.0,
+        }
+        self.activity_confidence_smoothed = {
+            "global": 0.0,
+            "UL": 0.0,
+            "UR": 0.0,
+            "LL": 0.0,
+            "LR": 0.0,
+        }
 
     def set_quality(self, downscale=None, slit_count=None, contour_min_area=None, frame_skip=None):
         quality_changed = False
@@ -1794,7 +1809,118 @@ class WaveAnalyzer:
 
         return out
 
-    def _fuse(self, contours, pyramid, flow):
+    @staticmethod
+    def _activity_from_temporal_bands(temporal_bands):
+        vals = np.asarray(temporal_bands if temporal_bands is not None else [0.0, 0.0, 0.0], dtype=np.float32)
+        if vals.size == 0:
+            return 0.0
+        if vals.size >= 3:
+            weights = np.asarray([0.5, 0.3, 0.2], dtype=np.float32)
+            vals = vals[:3]
+        else:
+            weights = np.ones(vals.size, dtype=np.float32)
+        wsum = float(np.sum(weights)) + 1e-9
+        return float(np.clip(np.dot(vals, weights) / wsum, 0.0, 1.0))
+
+    @staticmethod
+    def _fused_confidence(diff_val, flow_val, tex_val, flow_coherence):
+        comps = np.asarray([diff_val, flow_val, tex_val], dtype=np.float32)
+        agreement = float(np.clip(1.0 - (float(np.std(comps)) * 2.0), 0.0, 1.0))
+        return _clip01((0.55 * float(np.clip(flow_coherence, 0.0, 1.0))) + (0.45 * agreement))
+
+    def _smooth_activity_value(self, store, key, target, attack=0.35, release=0.12):
+        current = float(store.get(key, 0.0))
+        coeff = attack if target >= current else release
+        out = (1.0 - coeff) * current + coeff * float(target)
+        store[key] = float(out)
+        return float(out)
+
+    def _analyze_activity(self, gray_for_activity, pyramid_data, flow_data):
+        if gray_for_activity is None or gray_for_activity.size == 0:
+            return {
+                "global_activity": 0.0,
+                "global_activity_raw": 0.0,
+                "global_confidence": 0.0,
+                "global_confidence_raw": 0.0,
+                "quadrant_activity": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
+                "quadrant_activity_raw": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
+                "quadrant_confidence": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
+                "quadrant_confidence_raw": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
+            }
+
+        h, w = gray_for_activity.shape[:2]
+        hh = h // 2
+        hw = w // 2
+
+        if self.prev_activity_gray is None or self.prev_activity_gray.shape != gray_for_activity.shape:
+            diff_u8 = np.zeros_like(gray_for_activity, dtype=np.uint8)
+        else:
+            diff_u8 = cv2.absdiff(gray_for_activity, self.prev_activity_gray)
+        self.prev_activity_gray = gray_for_activity.copy()
+
+        diff_global = float(np.mean(diff_u8)) / 255.0
+        diff_quads = {
+            "UL": float(np.mean(diff_u8[0:hh, 0:hw])) / 255.0 if hh > 0 and hw > 0 else 0.0,
+            "UR": float(np.mean(diff_u8[0:hh, hw:w])) / 255.0 if hh > 0 and w > hw else 0.0,
+            "LL": float(np.mean(diff_u8[hh:h, 0:hw])) / 255.0 if h > hh and hw > 0 else 0.0,
+            "LR": float(np.mean(diff_u8[hh:h, hw:w])) / 255.0 if h > hh and w > hw else 0.0,
+        }
+
+        tex_global = self._activity_from_temporal_bands(pyramid_data.get("temporal_band_activity", [0.0, 0.0, 0.0]))
+        tex_quads_src = pyramid_data.get("quadrant_temporal_bands", {}) if isinstance(pyramid_data, dict) else {}
+        tex_quads = {
+            q: self._activity_from_temporal_bands((tex_quads_src.get(q) or [0.0, 0.0, 0.0]))
+            for q in ("UL", "UR", "LL", "LR")
+        }
+
+        flow_global = float(np.clip(flow_data.get("activity", 0.0), 0.0, 1.0))
+        flow_coh_global = float(np.clip(flow_data.get("coherence", 0.0), 0.0, 1.0))
+
+        q_fast = flow_data.get("quadrant_fast_metrics", {}) if isinstance(flow_data, dict) else {}
+        q_slow = flow_data.get("quadrant_slow_metrics", {}) if isinstance(flow_data, dict) else {}
+        flow_quads = {}
+        flow_coh_quads = {}
+        for q in ("UL", "UR", "LL", "LR"):
+            fq = q_fast.get(q, {}) if isinstance(q_fast, dict) else {}
+            sq = q_slow.get(q, {}) if isinstance(q_slow, dict) else {}
+            fa = float(np.clip(fq.get("activity", 0.0), 0.0, 1.0))
+            sa = float(np.clip(sq.get("activity", 0.0), 0.0, 1.0))
+            fc = float(np.clip(fq.get("coherence", 0.0), 0.0, 1.0))
+            sc = float(np.clip(sq.get("coherence", 0.0), 0.0, 1.0))
+            flow_quads[q] = max(fa, sa)
+            flow_coh_quads[q] = max(fc, sc)
+
+        # Fused activity: temporal difference + flow + temporal texture activity.
+        g_raw = _clip01((0.4 * diff_global) + (0.4 * flow_global) + (0.2 * tex_global))
+        g_conf_raw = self._fused_confidence(diff_global, flow_global, tex_global, flow_coh_global)
+
+        q_raw = {}
+        q_conf_raw = {}
+        for q in ("UL", "UR", "LL", "LR"):
+            q_raw[q] = _clip01((0.4 * diff_quads[q]) + (0.4 * flow_quads[q]) + (0.2 * tex_quads[q]))
+            q_conf_raw[q] = self._fused_confidence(diff_quads[q], flow_quads[q], tex_quads[q], flow_coh_quads[q])
+
+        g = self._smooth_activity_value(self.activity_smoothed, "global", g_raw, attack=0.35, release=0.12)
+        g_conf = self._smooth_activity_value(self.activity_confidence_smoothed, "global", g_conf_raw, attack=0.25, release=0.1)
+
+        q_smooth = {}
+        q_conf_smooth = {}
+        for q in ("UL", "UR", "LL", "LR"):
+            q_smooth[q] = self._smooth_activity_value(self.activity_smoothed, q, q_raw[q], attack=0.35, release=0.12)
+            q_conf_smooth[q] = self._smooth_activity_value(self.activity_confidence_smoothed, q, q_conf_raw[q], attack=0.25, release=0.1)
+
+        return {
+            "global_activity": float(g),
+            "global_activity_raw": float(g_raw),
+            "global_confidence": float(g_conf),
+            "global_confidence_raw": float(g_conf_raw),
+            "quadrant_activity": {k: float(v) for k, v in q_smooth.items()},
+            "quadrant_activity_raw": {k: float(v) for k, v in q_raw.items()},
+            "quadrant_confidence": {k: float(v) for k, v in q_conf_smooth.items()},
+            "quadrant_confidence_raw": {k: float(v) for k, v in q_conf_raw.items()},
+        }
+
+    def _fuse(self, contours, pyramid, flow, activity_data=None):
         global_bands = pyramid.get("global_bands", [0.0, 0.0, 0.0])
         dominant_idx = int(pyramid.get("dominant_scale_index", 0))
         raw = {
@@ -1811,6 +1937,10 @@ class WaveAnalyzer:
             "activity": _clip01(0.45 * flow["activity"] + 0.55 * min(1.0, contours["fill_ratio"] * 4.0)),
             "confidence": _clip01(0.4 * contours["stability"] + 0.3 * flow["coherence"] + 0.3 * (1.0 - abs(global_bands[-1] - 0.2))),
         }
+
+        if isinstance(activity_data, dict):
+            raw["activity"] = float(np.clip(activity_data.get("global_activity", raw["activity"]), 0.0, 1.0))
+            raw["confidence"] = float(np.clip(activity_data.get("global_confidence", raw["confidence"]), 0.0, 1.0))
 
         smoothed = {
             "wave_frequency_hz": self._ema("wave_frequency_hz", raw["wave_frequency_hz"], attack=0.28, release=0.08),
@@ -1931,6 +2061,10 @@ class WaveAnalyzer:
         )
         timers["flow_ms"] = (perf_counter() - t3) * 1000.0
 
+        t_act = perf_counter()
+        activity_data = self._analyze_activity(blur, pyramid_data, flow_data)
+        timers["activity_ms"] = (perf_counter() - t_act) * 1000.0
+
         t_wl = perf_counter()
         # Wavelength detection: find dominant spatial pattern scale.
         wavelength_data = detect_wavelength(blur, direction="both", lag_range=(3, 300), min_confidence=0.15,
@@ -2002,7 +2136,7 @@ class WaveAnalyzer:
         timers["wavelength_ms"] = (perf_counter() - t_wl) * 1000.0
 
         t4 = perf_counter()
-        raw, smoothed = self._fuse(contour_data, pyramid_data, flow_data)
+        raw, smoothed = self._fuse(contour_data, pyramid_data, flow_data, activity_data=activity_data)
         timers["fusion_ms"] = (perf_counter() - t4) * 1000.0
         timers["total_ms"] = sum(timers.values())
 
@@ -2020,6 +2154,7 @@ class WaveAnalyzer:
             "lbp_data": lbp_data,
             "gabor_data": gabor_data,
             "flow_data": flow_data,
+            "activity_data": activity_data,
             "wavelength_data": wavelength_data,
             "raw": raw,
             "smoothed": smoothed,

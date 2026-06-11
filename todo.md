@@ -1,5 +1,7 @@
 * S and T frequencies can be investigated, see chat log for CST
 
+* Activity measure
+
 * Audio gen idea
   - 3 bands of noise controlled by the temporal band activity
   - rhythmic pulse (granular like), so

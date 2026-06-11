@@ -243,6 +243,73 @@ def load_mask(mask_path):
     return None
 
 
+def draw_spatial_frequency_rulers(frame, start_x=10, start_y=10, scale_factor=1.5):
+    """Draw spatial frequency reference rulers in upper left corner.
+    
+    Three rulers (yellow, blue, purple) show characteristic spatial
+    scales of the pyramid analysis bands.
+    
+    Args:
+        frame: Image to draw on
+        start_x: X position (pixels from left)
+        start_y: Y position (pixels from top)
+        scale_factor: Visual scaling of ruler lengths (1.0 = actual pixels shown)
+    """
+    # Define bands with tick spacing and colors.
+    bands = [
+        {
+            "name": "SLo",
+            "color": (0, 215, 255),  # Yellow in BGR
+            "tick_step": 4,
+            "label": "Fine",
+        },
+        {
+            "name": "SMid",
+            "color": (255, 0, 0),  # Blue in BGR
+            "tick_step": 8,
+            "label": "Coarse",
+        },
+        {
+            "name": "SHi",
+            "color": (255, 0, 255),  # Purple in BGR
+            "tick_step": 16,
+            "label": "Extra-coarse",
+        },
+    ]
+    
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.4
+    thickness = 1
+    line_height = 32
+    y_pos = start_y
+
+    # Use SHi as shared reference: 4 ticks means endpoints at 0,16,32,48.
+    shared_tick_count = 4
+    shared_length_px = int((16 * (shared_tick_count - 1)) * scale_factor)
+    
+    for band in bands:
+        # Draw ruler label
+        label_text = f"{band['name']} ({band['label']})"
+        cv2.putText(
+            frame, label_text, (start_x, y_pos - 5),
+            font, font_scale, band["color"], thickness, cv2.LINE_AA
+        )
+        
+        # Draw ruler line
+        x_end = start_x + shared_length_px
+        cv2.line(frame, (start_x, y_pos), (x_end, y_pos), band["color"], 1)
+        
+        # Draw tick marks only (no numeric labels).
+        for tick_idx in range(shared_tick_count):
+            tick_x = start_x + int((tick_idx * band["tick_step"]) * scale_factor)
+            # Tick mark
+            cv2.line(frame, (tick_x, y_pos - 4), (tick_x, y_pos + 4), band["color"], 1)
+        
+        y_pos += line_height
+    
+    return frame
+
+
 def draw_status_hud(
     frame,
     mode_name,
@@ -267,7 +334,6 @@ def draw_status_hud(
     signal_lines = [
         f"bump {smooth['bump_size_common'] * 1000.0:.2f}% spread {smooth['bump_size_spread'] * 1000.0:.2f}% max {smooth['bump_size_max'] * 1000.0:.2f}%",
         f"bump ctr(size) {smooth['bump_size_centroid'] * 100.0:.2f}% shape {smooth['bump_shape_roundness']:.2f}",
-        f"act {smooth['activity']:.2f} conf {smooth['confidence']:.2f}",
     ]
 
 
@@ -487,6 +553,35 @@ def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10,
     cv2.rectangle(frame, (x0, y0), (x0 + slider_w, base_y), (140, 140, 140), 1)
     if fill_h > 0:
         cv2.rectangle(frame, (x0, base_y - fill_h), (x0 + slider_w, base_y), color, -1)
+    cv2.putText(frame, label, (x0 - 2, y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (225, 225, 225), 1, cv2.LINE_AA)
+
+
+def _draw_horizontal_slider(
+    frame,
+    x0,
+    y0,
+    value,
+    label,
+    slider_w=52,
+    slider_h=8,
+    color=(80, 210, 120),
+    value_max=1.0,
+    value_gain=1.0,
+):
+    x0 = int(x0)
+    y0 = int(y0)
+    slider_w = int(max(20, slider_w))
+    slider_h = int(max(6, slider_h))
+    value = 0.0 if value is None else float(max(0.0, value))
+    value *= float(max(0.0, value_gain))
+    norm = float(np.clip(value / max(value_max, 1e-6), 0.0, 1.0))
+
+    draw_transparent_rect(frame, x0 - 4, y0 - 14, slider_w + 8, slider_h + 22, alpha=0.52)
+    x1 = x0 + slider_w
+    fill_w = int(max(1, round(norm * slider_w))) if value > 0.0 else 0
+    cv2.rectangle(frame, (x0, y0), (x1, y0 + slider_h), (140, 140, 140), 1)
+    if fill_w > 0:
+        cv2.rectangle(frame, (x0, y0), (x0 + fill_w, y0 + slider_h), color, -1)
     cv2.putText(frame, label, (x0 - 2, y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (225, 225, 225), 1, cv2.LINE_AA)
 
 
@@ -843,11 +938,10 @@ def draw_lbp_overlay(frame, lbp_data):
     )
 
 
-# Pyramid texture band colors: yellow-wide, coarse, extra-coarse.
-# Ordered as yellow -> blue -> purple.
+# Pyramid texture band colors: yellow -> blue -> purple.
 _PYRAMID_BAND_COLORS = [
     (0, 220, 255),
-    (255, 140, 80),
+    (255, 0, 0),
     (220, 60, 220),
 ]
 
@@ -965,7 +1059,7 @@ def _draw_pyramid_bar_group(frame, x0, y0, bands, label, bar_w=8, bar_h=52, gap=
         cv2.rectangle(frame, (tc_marker_x - 2, tc_y0), (tc_marker_x + 2, tc_y0 + tc_h), (180, 180, 180), -1)
 
 
-def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
+def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None, activity_data=None):
     if not isinstance(pyramid_data, dict):
         return frame
 
@@ -987,6 +1081,9 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     wd = wavelength_data or {}
     q_wl = wd.get("quadrants", {})
     g_wl = wd.get("wavelength_px")
+    ad = activity_data or {}
+    q_act = ad.get("quadrant_activity", {}) if isinstance(ad, dict) else {}
+    g_act = float(ad.get("global_activity", 0.0)) if isinstance(ad, dict) else 0.0
 
     centers = _flow_arrow_centers(h, w)
 
@@ -1019,8 +1116,14 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
             temporal_centroid=q_t_ctr.get(label),
             temporal_shift_y=(left_temporal_shift_y if label in ("UL", "UR", "LL", "LR") else 0))
         wl_val = (q_wl.get(label) or {}).get("wavelength_px")
+        act_val = float((q_act.get(label) if isinstance(q_act, dict) else 0.0) or 0.0)
         wl_y = int(np.clip(wl_y, 24, max(24, h - 24 - 68)))
         wl_x = int(np.clip(wl_x, 10, max(10, w - 10 - 10)))
+        act_w = 10
+        act_h = 68
+        act_x = int(np.clip(wl_x - act_w - 8, 10, max(10, w - 10 - act_w)))
+        act_y = int(np.clip(wl_y, 24, max(24, h - 24 - act_h)))
+        _draw_vertical_slider(out, act_x, act_y, act_val * 3.0, label="A", slider_h=act_h, slider_w=act_w, color=(80, 210, 120), value_max=1.0)
         _draw_vertical_slider(out, wl_x, wl_y, wl_val, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
 
     g_cx, g_cy = centers["G"]
@@ -1029,6 +1132,11 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None):
     _draw_pyramid_bar_group(out, g_bar_x, g_bar_y, g, "", temporal_bands=g_t, centroid=g_ctr, temporal_centroid=g_t_ctr)
     g_wl_x = int(np.clip(g_cx - g_radius - pad - 10 - 12, 10, max(10, w - 10 - 10)))
     g_wl_y = int(np.clip(g_cy + 14 - 15, 24, max(24, h - 24 - 68)))
+    g_act_w = 10
+    g_act_h = 68
+    g_act_x = int(np.clip(g_wl_x - g_act_w - 8, 10, max(10, w - 10 - g_act_w)))
+    g_act_y = int(np.clip(g_wl_y, 24, max(24, h - 24 - g_act_h)))
+    _draw_vertical_slider(out, g_act_x, g_act_y, g_act * 3.0, label="A", slider_h=g_act_h, slider_w=g_act_w, color=(80, 210, 120), value_max=1.0)
     _draw_vertical_slider(out, g_wl_x, g_wl_y, g_wl, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
     return out
 
@@ -1118,7 +1226,12 @@ def make_display_frame(
             out = draw_quadrant_lbp_triangles(out, lbp_data)
 
     if spectrum_overlay:
-        out = draw_pyramid_texture_bars(out, analysis.get("pyramid_data"), analysis.get("wavelength_data"))
+        out = draw_pyramid_texture_bars(
+            out,
+            analysis.get("pyramid_data"),
+            analysis.get("wavelength_data"),
+            analysis.get("activity_data"),
+        )
 
     return out
 
@@ -1578,6 +1691,9 @@ def main():
                 wavelength_data=analysis.get("wavelength_data") if analysis else None,
                 lbp_data=analysis.get("lbp_data") if analysis else None,
             )
+
+            # Draw spatial frequency reference rulers
+            display = draw_spatial_frequency_rulers(display, start_x=10, start_y=10, scale_factor=1.5)
 
             if show_texture_overlay and analysis:
                 display = draw_lbp_overlay(display, analysis.get("lbp_data"))
