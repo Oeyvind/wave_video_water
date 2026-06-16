@@ -1,6 +1,21 @@
 * S and T frequencies can be investigated, see chat log for CST
 
-* Activity measure
+
+* Wave transfer
+  - add waveshape mode
+  - dc block for both modes
+  - lowpass
+
+* Noisegrain:
+  - num voices, rdev for wavfreq and grainrate
+    - rdev has amp on rslider
+    - low and hi freq on nsliders above rslider
+  - source select wave
+  - keep all in 1, or make 3 modules?
+    - gainmask and chanmask can be nslider unmodulated
+    - source select can be combobox, skip noiselevel
+    - waveform wave needs samplepos
+    - wave freq: different scale (on rslider display) for tone, noise, wave
 
 * Audio gen idea
   - 3 bands of noise controlled by the temporal band activity

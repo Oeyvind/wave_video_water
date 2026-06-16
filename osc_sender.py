@@ -1,6 +1,58 @@
+import cv2
+import numpy as np
 from pythonosc.udp_client import SimpleUDPClient
 
 client = SimpleUDPClient("127.0.0.1", 8000)
+
+SLIT_SAMPLE_COUNT = 512
+SLIT_CHUNK_SIZE = 16
+_slit_frame_id = 0
+
+
+def _extract_center_slit_samples(analysis, sample_count=SLIT_SAMPLE_COUNT):
+    src = analysis.get("roi_gray") if isinstance(analysis, dict) else None
+    if src is None or getattr(src, "size", 0) == 0:
+        return None
+
+    if len(src.shape) != 2:
+        return None
+
+    h, _w = src.shape[:2]
+    if h <= 0:
+        return None
+
+    center_y = h // 2
+    slit = src[center_y:center_y + 1, :]
+    if slit.size == 0:
+        return None
+
+    # Area resampling gives stable anti-aliased downsampling for wide slits.
+    slit_ds = cv2.resize(slit, (int(sample_count), 1), interpolation=cv2.INTER_AREA)
+    return np.clip(slit_ds.astype(np.float32).reshape(-1) / 255.0, 0.0, 1.0)
+
+
+def _send_center_slit_chunks(analysis):
+    global _slit_frame_id
+
+    samples = _extract_center_slit_samples(analysis, sample_count=SLIT_SAMPLE_COUNT)
+    if samples is None:
+        return
+
+    chunk_size = int(max(1, SLIT_CHUNK_SIZE))
+    total = int(samples.size)
+    if total <= 0 or (total % chunk_size) != 0:
+        return
+
+    chunk_count = total // chunk_size
+    frame_id = int(_slit_frame_id)
+    _slit_frame_id += 1
+
+    for chunk_idx in range(chunk_count):
+        start = chunk_idx * chunk_size
+        end = start + chunk_size
+        chunk_vals = [float(v) for v in samples[start:end]]
+        payload = [frame_id, int(chunk_idx), int(chunk_count)] + chunk_vals
+        client.send_message("/slit/chunk", payload)
 
 def send_wave_data(freqs, direction):
     client.send_message("/wave/freq_low", float(freqs["low"]))
@@ -143,3 +195,18 @@ def send_fused_wave_data(analysis):
         m = qsm.get(q) or {}
         slow_quad_pack += [float(m.get("direction_deg", 0.0)), float(m.get("activity", 0.0))]
     client.send_message("/wave/flow/slow_quad_pack", slow_quad_pack)
+
+    # Fused activity: global + UL/UR/LL/LR
+    act = analysis.get("activity_data") or {}
+    q_act = act.get("quadrant_activity") or {}
+    act_pack = [
+        float(act.get("global_activity", 0.0)),
+        float(q_act.get("UL", 0.0)),
+        float(q_act.get("UR", 0.0)),
+        float(q_act.get("LL", 0.0)),
+        float(q_act.get("LR", 0.0)),
+    ]
+    client.send_message("/wave/activity/pack", act_pack)
+
+    # Central horizontal slit waveform transport: 512 samples in 16-float chunks.
+    _send_center_slit_chunks(analysis)
