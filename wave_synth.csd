@@ -17,7 +17,7 @@ button bounds(41, 142, 6, 34), channel("master_cal"), value(0), colour:0("#3c465
 ; Module 1: v1_pitch
 rslider channel("v1_pitch_view"), bounds(48, 25, 70, 70), text(""), range(50, 1000, 160, 1, 0.01), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v1_pitch_base"), bounds(48, 29, 70, 70), text("Pitch"), range(50, 1000, 160, 1, 0.01), trackerColour(40,80,200)
-combobox bounds(48, 102, 85, 18), channel("m_v1_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(48, 102, 85, 18), channel("m_v1_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(48, 122, 85, 18), channel("m_v1_pitch_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(48, 142, 50, 16), channel("m_v1_pitch_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -38,7 +38,7 @@ label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module 2: v1_bal
 rslider channel("v1_bal_view"), bounds(140, 25, 70, 70), text(""), range(0, 1, 0.2, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v1_bal_base"), bounds(140, 29, 70, 70), text("Tone/noise"), range(0, 1, 0.2, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(140, 102, 85, 18), channel("m_v1_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(140, 102, 85, 18), channel("m_v1_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(140, 122, 85, 18), channel("m_v1_bal_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(140, 142, 50, 16), channel("m_v1_bal_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(140, 160, 50, 16), channel("m_v1_bal_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -52,7 +52,7 @@ combobox bounds(140, 250, 50, 16), channel("m_v1_bal_mode"), value(1), text("Add
 ; Module 3: v1_bw
 rslider channel("v1_bw_view"), bounds(232, 25, 70, 70), text(""), range(0.02, 0.5, 0.12, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v1_bw_base"), bounds(232, 29, 70, 70), text("BW1"), range(0.02, 0.5, 0.12, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(232, 102, 85, 18), channel("m_v1_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(232, 102, 85, 18), channel("m_v1_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(232, 122, 85, 18), channel("m_v1_bw_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(232, 142, 50, 16), channel("m_v1_bw_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -73,7 +73,7 @@ label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module 4: v1_amp
 rslider channel("v1_amp_view"), bounds(324, 25, 70, 70), text(""), range(0, 1, 0.25, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v1_amp_base"), bounds(324, 29, 70, 70), text("Amp1"), range(0, 1, 0.25, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(324, 102, 85, 18), channel("m_v1_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(324, 102, 85, 18), channel("m_v1_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(324, 122, 85, 18), channel("m_v1_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(324, 142, 50, 16), channel("m_v1_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(324, 160, 50, 16), channel("m_v1_amp_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -87,7 +87,7 @@ combobox bounds(324, 250, 50, 16), channel("m_v1_amp_mode"), value(1), text("Add
 ; Module 5: v2_pitch
 rslider channel("v2_pitch_view"), bounds(416, 25, 70, 70), text(""), range(50, 1000, 280, 1, 0.01), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v2_pitch_base"), bounds(416, 29, 70, 70), text("Pitch2"), range(50, 1000, 280, 1, 0.01), trackerColour(40,80,200)
-combobox bounds(416, 102, 85, 18), channel("m_v2_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(416, 102, 85, 18), channel("m_v2_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(416, 122, 85, 18), channel("m_v2_pitch_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(416, 142, 50, 16), channel("m_v2_pitch_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -108,7 +108,7 @@ label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module 6: v2_bal
 rslider channel("v2_bal_view"), bounds(508, 25, 70, 70), text(""), range(0, 1, 0.25, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v2_bal_base"), bounds(508, 29, 70, 70), text("Tone/noise2"), range(0, 1, 0.25, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(508, 102, 85, 18), channel("m_v2_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(508, 102, 85, 18), channel("m_v2_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(508, 122, 85, 18), channel("m_v2_bal_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(508, 142, 50, 16), channel("m_v2_bal_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(508, 160, 50, 16), channel("m_v2_bal_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -122,7 +122,7 @@ combobox bounds(508, 250, 50, 16), channel("m_v2_bal_mode"), value(1), text("Add
 ; Module 7: v2_bw
 rslider channel("v2_bw_view"), bounds(600, 25, 70, 70), text(""), range(0.02, 0.5, 0.12, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v2_bw_base"), bounds(600, 29, 70, 70), text("BW2"), range(0.02, 0.5, 0.12, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(600, 102, 85, 18), channel("m_v2_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(600, 102, 85, 18), channel("m_v2_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(600, 122, 85, 18), channel("m_v2_bw_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(600, 142, 50, 16), channel("m_v2_bw_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -143,7 +143,7 @@ label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module 8: v2_amp
 rslider channel("v2_amp_view"), bounds(692, 25, 70, 70), text(""), range(0, 1, 0.2, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v2_amp_base"), bounds(692, 29, 70, 70), text("Amp2"), range(0, 1, 0.2, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(692, 102, 85, 18), channel("m_v2_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(692, 102, 85, 18), channel("m_v2_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(692, 122, 85, 18), channel("m_v2_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(692, 142, 50, 16), channel("m_v2_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(692, 160, 50, 16), channel("m_v2_amp_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -157,7 +157,7 @@ combobox bounds(692, 250, 50, 16), channel("m_v2_amp_mode"), value(1), text("Add
 ; Module 9: v3_pitch
 rslider channel("v3_pitch_view"), bounds(784, 25, 70, 70), text(""), range(50, 1000, 520, 1, 0.01), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v3_pitch_base"), bounds(784, 29, 70, 70), text("Pitch3"), range(50, 1000, 520, 1, 0.01), trackerColour(40,80,200)
-combobox bounds(784, 102, 85, 18), channel("m_v3_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(784, 102, 85, 18), channel("m_v3_pitch_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(784, 122, 85, 18), channel("m_v3_pitch_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(784, 142, 50, 16), channel("m_v3_pitch_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(836, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -178,7 +178,7 @@ label bounds(836, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module 10: v3_bal
 rslider channel("v3_bal_view"), bounds(876, 25, 70, 70), text(""), range(0, 1, 0.3, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v3_bal_base"), bounds(876, 29, 70, 70), text("Tone/noise3"), range(0, 1, 0.3, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(876, 102, 85, 18), channel("m_v3_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(876, 102, 85, 18), channel("m_v3_bal_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(876, 122, 85, 18), channel("m_v3_bal_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(876, 142, 50, 16), channel("m_v3_bal_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(876, 160, 50, 16), channel("m_v3_bal_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -192,7 +192,7 @@ combobox bounds(876, 250, 50, 16), channel("m_v3_bal_mode"), value(1), text("Add
 ; Module 11: v3_bw
 rslider channel("v3_bw_view"), bounds(968, 25, 70, 70), text(""), range(0.02, 0.5, 0.12, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v3_bw_base"), bounds(968, 29, 70, 70), text("BW3"), range(0.02, 0.5, 0.12, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(968, 102, 85, 18), channel("m_v3_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(968, 102, 85, 18), channel("m_v3_bw_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(968, 122, 85, 18), channel("m_v3_bw_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(968, 142, 50, 16), channel("m_v3_bw_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(1020, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -213,7 +213,7 @@ label bounds(1020, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize
 ; Module 12: v3_amp
 rslider channel("v3_amp_view"), bounds(1060, 25, 70, 70), text(""), range(0, 1, 0.18, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("v3_amp_base"), bounds(1060, 29, 70, 70), text("Amp3"), range(0, 1, 0.18, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(1060, 102, 85, 18), channel("m_v3_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(1060, 102, 85, 18), channel("m_v3_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(1060, 122, 85, 18), channel("m_v3_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(1060, 142, 50, 16), channel("m_v3_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(1060, 160, 50, 16), channel("m_v3_amp_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -227,7 +227,7 @@ combobox bounds(1060, 250, 50, 16), channel("m_v3_amp_mode"), value(1), text("Ad
 ; Module 13: master pan
 rslider channel("master_pan_view"), bounds(1152, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("master_pan_base"), bounds(1152, 29, 70, 70), text("Pan"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(1152, 102, 85, 18), channel("m_master_pan_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(1152, 102, 85, 18), channel("m_master_pan_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(1152, 122, 85, 18), channel("m_master_pan_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(1152, 142, 50, 16), channel("m_master_pan_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(1204, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -254,7 +254,7 @@ button bounds(41, 142, 6, 34), channel("ng_master_cal"), value(0), colour:0("#3c
 ; Module ng_amp (Amp, col 1 - has labels)
 rslider channel("ng_amp_view"), bounds(48, 25, 70, 70), text(""), range(0, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_amp_base"), bounds(48, 29, 70, 70), text("Amp"), range(0, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(48, 102, 85, 18), channel("m_ng_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(48, 102, 85, 18), channel("m_ng_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(48, 122, 85, 18), channel("m_ng_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(48, 142, 50, 16), channel("m_ng_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -274,7 +274,7 @@ label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module ng_wfreq (WavFreq, col 2 - no labels)
 rslider channel("ng_wfreq_view"), bounds(140, 25, 70, 70), text(""), range(1, 5000, 440, 0.3, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_wfreq_base"), bounds(140, 29, 70, 70), text("WavFreq"), range(1, 5000, 440, 0.3, 1), trackerColour(40,80,200)
-combobox bounds(140, 102, 85, 18), channel("m_ng_wfreq_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(140, 102, 85, 18), channel("m_ng_wfreq_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(140, 122, 85, 18), channel("m_ng_wfreq_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(140, 142, 50, 16), channel("m_ng_wfreq_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(140, 160, 50, 16), channel("m_ng_wfreq_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -287,7 +287,7 @@ combobox bounds(140, 250, 50, 16), channel("m_ng_wfreq_mode"), value(1), text("A
 ; Module ng_wfreq_rdev (WavFreq RDev, col 3 - has labels)
 rslider channel("ng_wfreq_rdev_view"), bounds(232, 25, 70, 70), text(""), range(0, 1, 0, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_wfreq_rdev_base"), bounds(232, 29, 70, 70), text("WF RDev"), range(0, 20, 0, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(232, 102, 85, 18), channel("m_ng_wfreq_rdev_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(232, 102, 85, 18), channel("m_ng_wfreq_rdev_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(232, 122, 85, 18), channel("m_ng_wfreq_rdev_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(232, 142, 50, 16), channel("m_ng_wfreq_rdev_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -307,7 +307,7 @@ label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module ng_grate (GrainRate, col 4 - no labels)
 rslider channel("ng_grate_view"), bounds(324, 25, 70, 70), text(""), range(0.2, 200, 10, 0.3, 0.1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_grate_base"), bounds(324, 29, 70, 70), text("GrainRate"), range(0.2, 200, 10, 0.3, 0.1), trackerColour(40,80,200)
-combobox bounds(324, 102, 85, 18), channel("m_ng_grate_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(324, 102, 85, 18), channel("m_ng_grate_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(324, 122, 85, 18), channel("m_ng_grate_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(324, 142, 50, 16), channel("m_ng_grate_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(324, 160, 50, 16), channel("m_ng_grate_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -320,7 +320,7 @@ combobox bounds(324, 250, 50, 16), channel("m_ng_grate_mode"), value(1), text("A
 ; Module ng_grate_rdev (GrainRate RDev, col 5 - has labels)
 rslider channel("ng_grate_rdev_view"), bounds(416, 25, 70, 70), text(""), range(0, 1, 0, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_grate_rdev_base"), bounds(416, 29, 70, 70), text("GR RDev"), range(0, 20, 0, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(416, 102, 85, 18), channel("m_ng_grate_rdev_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(416, 102, 85, 18), channel("m_ng_grate_rdev_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(416, 122, 85, 18), channel("m_ng_grate_rdev_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(416, 142, 50, 16), channel("m_ng_grate_rdev_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -340,7 +340,7 @@ label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module ng_gdur (GrainDur, col 6 - no labels)
 rslider channel("ng_gdur_view"), bounds(508, 25, 70, 70), text(""), range(0, 1, 0.2, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_gdur_base"), bounds(508, 29, 70, 70), text("GrainDur"), range(0, 1, 0.2, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(508, 102, 85, 18), channel("m_ng_gdur_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(508, 102, 85, 18), channel("m_ng_gdur_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(508, 122, 85, 18), channel("m_ng_gdur_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(508, 142, 50, 16), channel("m_ng_gdur_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(508, 160, 50, 16), channel("m_ng_gdur_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -353,7 +353,7 @@ combobox bounds(508, 250, 50, 16), channel("m_ng_gdur_mode"), value(1), text("Ad
 ; Module ng_adr (A/D Ratio, col 7 - has labels)
 rslider channel("ng_adr_view"), bounds(600, 25, 70, 70), text(""), range(0.005, 1, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_adr_base"), bounds(600, 29, 70, 70), text("A/D"), range(0.005, 1, 0.5, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(600, 102, 85, 18), channel("m_ng_adr_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(600, 102, 85, 18), channel("m_ng_adr_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(600, 122, 85, 18), channel("m_ng_adr_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(600, 142, 50, 16), channel("m_ng_adr_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -373,7 +373,7 @@ label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; Module ng_sus (Sustain, col 8 - no labels)
 rslider channel("ng_sus_view"), bounds(692, 25, 70, 70), text(""), range(0, 0.99, 0.5, 1, 0.001), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ng_sus_base"), bounds(692, 29, 70, 70), text("Sustain"), range(0, 0.99, 0.5, 1, 0.001), trackerColour(40,80,200)
-combobox bounds(692, 102, 85, 18), channel("m_ng_sus_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(692, 102, 85, 18), channel("m_ng_sus_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(692, 122, 85, 18), channel("m_ng_sus_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(692, 142, 50, 16), channel("m_ng_sus_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(692, 160, 50, 16), channel("m_ng_sus_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -404,7 +404,7 @@ button bounds(41, 142, 6, 34), channel("ccm_master_cal"), value(0), colour:0("#3
 ; CC Map 1 (CC32)
 rslider channel("ccm1_view"), bounds(48, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm1_base"), bounds(48, 29, 70, 70), text("CC32"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(48, 102, 85, 18), channel("m_ccm1_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(48, 102, 85, 18), channel("m_ccm1_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(48, 122, 85, 18), channel("m_ccm1_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(48, 142, 50, 16), channel("m_ccm1_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -425,7 +425,7 @@ label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 ; CC Map 2..8 (CC33..CC39)
 rslider channel("ccm2_view"), bounds(140, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm2_base"), bounds(140, 29, 70, 70), text("CC33"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(140, 102, 85, 18), channel("m_ccm2_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(140, 102, 85, 18), channel("m_ccm2_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(140, 122, 85, 18), channel("m_ccm2_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(140, 142, 50, 16), channel("m_ccm2_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(140, 160, 50, 16), channel("m_ccm2_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -438,7 +438,7 @@ combobox bounds(140, 250, 50, 16), channel("m_ccm2_mode"), value(1), text("Add",
 
 rslider channel("ccm3_view"), bounds(232, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm3_base"), bounds(232, 29, 70, 70), text("CC34"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(232, 102, 85, 18), channel("m_ccm3_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(232, 102, 85, 18), channel("m_ccm3_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(232, 122, 85, 18), channel("m_ccm3_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(232, 142, 50, 16), channel("m_ccm3_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -458,7 +458,7 @@ label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 rslider channel("ccm4_view"), bounds(324, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm4_base"), bounds(324, 29, 70, 70), text("CC35"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(324, 102, 85, 18), channel("m_ccm4_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(324, 102, 85, 18), channel("m_ccm4_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(324, 122, 85, 18), channel("m_ccm4_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(324, 142, 50, 16), channel("m_ccm4_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(324, 160, 50, 16), channel("m_ccm4_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -471,7 +471,7 @@ combobox bounds(324, 250, 50, 16), channel("m_ccm4_mode"), value(1), text("Add",
 
 rslider channel("ccm5_view"), bounds(416, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm5_base"), bounds(416, 29, 70, 70), text("CC36"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(416, 102, 85, 18), channel("m_ccm5_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(416, 102, 85, 18), channel("m_ccm5_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(416, 122, 85, 18), channel("m_ccm5_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(416, 142, 50, 16), channel("m_ccm5_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -491,7 +491,7 @@ label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 rslider channel("ccm6_view"), bounds(508, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm6_base"), bounds(508, 29, 70, 70), text("CC37"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(508, 102, 85, 18), channel("m_ccm6_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(508, 102, 85, 18), channel("m_ccm6_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(508, 122, 85, 18), channel("m_ccm6_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(508, 142, 50, 16), channel("m_ccm6_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(508, 160, 50, 16), channel("m_ccm6_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -504,7 +504,7 @@ combobox bounds(508, 250, 50, 16), channel("m_ccm6_mode"), value(1), text("Add",
 
 rslider channel("ccm7_view"), bounds(600, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm7_base"), bounds(600, 29, 70, 70), text("CC38"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(600, 102, 85, 18), channel("m_ccm7_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(600, 102, 85, 18), channel("m_ccm7_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(600, 122, 85, 18), channel("m_ccm7_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(600, 142, 50, 16), channel("m_ccm7_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -524,7 +524,7 @@ label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 rslider channel("ccm8_view"), bounds(692, 25, 70, 70), text(""), range(0, 127, 64, 1, 1), markerThickness(0), outlineColour(0,0,0,0), trackerInsideRadius(0.8), colour("black")
 rslider channel("ccm8_base"), bounds(692, 29, 70, 70), text("CC39"), range(0, 127, 64, 1, 1), trackerColour(40,80,200)
-combobox bounds(692, 102, 85, 18), channel("m_ccm8_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(692, 102, 85, 18), channel("m_ccm8_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(692, 122, 85, 18), channel("m_ccm8_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(692, 142, 50, 16), channel("m_ccm8_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(692, 160, 50, 16), channel("m_ccm8_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -545,7 +545,7 @@ button bounds(41, 142, 6, 34), channel("w_master_cal"), value(0), colour:0("#3c4
 
 ; W_freq (col 1, x=48, has labels)
 rslider channel("W_freq"), bounds(48, 29, 70, 70), text("Freq"), range(20, 4000, 220, 0.3, 0.01), trackerColour(180,120,60)
-combobox bounds(48, 102, 85, 18), channel("m_w_freq_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(48, 102, 85, 18), channel("m_w_freq_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(48, 122, 85, 18), channel("m_w_freq_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(48, 142, 50, 16), channel("m_w_freq_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(100, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -565,7 +565,7 @@ label bounds(100, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 ; W_start (col 2, x=140)
 rslider channel("W_start"), bounds(140, 29, 70, 70), text("Start"), range(0, 511, 0, 1, 1), trackerColour(180,120,60)
-combobox bounds(140, 102, 85, 18), channel("m_w_start_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(140, 102, 85, 18), channel("m_w_start_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(140, 122, 85, 18), channel("m_w_start_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(140, 142, 50, 16), channel("m_w_start_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(140, 160, 50, 16), channel("m_w_start_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -578,7 +578,7 @@ combobox bounds(140, 250, 50, 16), channel("m_w_start_mode"), value(1), text("Ad
 
 ; W_end (col 3, x=232, has labels)
 rslider channel("W_end"), bounds(232, 29, 70, 70), text("End"), range(0, 511, 511, 1, 1), trackerColour(180,120,60)
-combobox bounds(232, 102, 85, 18), channel("m_w_end_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(232, 102, 85, 18), channel("m_w_end_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(232, 122, 85, 18), channel("m_w_end_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(232, 142, 50, 16), channel("m_w_end_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(284, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -598,7 +598,7 @@ label bounds(284, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 ; W_Amp (col 4, x=324)
 rslider channel("W_Amp"), bounds(324, 29, 70, 70), text("Amp dB"), range(-96, 6, -12, 1, 0.1), trackerColour(180,120,60)
-combobox bounds(324, 102, 85, 18), channel("m_w_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(324, 102, 85, 18), channel("m_w_amp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(324, 122, 85, 18), channel("m_w_amp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(324, 142, 50, 16), channel("m_w_amp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(324, 160, 50, 16), channel("m_w_amp_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -611,7 +611,7 @@ combobox bounds(324, 250, 50, 16), channel("m_w_amp_mode"), value(1), text("Add"
 
 ; W_tone (col 5, x=416, has labels)
 rslider channel("W_tone"), bounds(416, 29, 70, 70), text("Tone"), range(0, 1, 0.5, 1, 0.001), trackerColour(180,120,60)
-combobox bounds(416, 102, 85, 18), channel("m_w_tone_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(416, 102, 85, 18), channel("m_w_tone_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(416, 122, 85, 18), channel("m_w_tone_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(416, 142, 50, 16), channel("m_w_tone_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(468, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -631,7 +631,7 @@ label bounds(468, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 ; W_brite (col 6, x=508)
 rslider channel("W_brite"), bounds(508, 29, 70, 70), text("Brite"), range(-3, 3, 0, 1, 0.001), trackerColour(180,120,60)
-combobox bounds(508, 102, 85, 18), channel("m_w_brite_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(508, 102, 85, 18), channel("m_w_brite_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(508, 122, 85, 18), channel("m_w_brite_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(508, 142, 50, 16), channel("m_w_brite_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(508, 160, 50, 16), channel("m_w_brite_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -644,7 +644,7 @@ combobox bounds(508, 250, 50, 16), channel("m_w_brite_mode"), value(1), text("Ad
 
 ; W_gain (col 7, x=600, has labels)
 rslider channel("W_gain"), bounds(600, 29, 70, 70), text("Gain"), range(0, 1, 0.6, 1, 0.001), trackerColour(180,120,60)
-combobox bounds(600, 102, 85, 18), channel("m_w_gain_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(600, 102, 85, 18), channel("m_w_gain_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(600, 122, 85, 18), channel("m_w_gain_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(600, 142, 50, 16), channel("m_w_gain_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(652, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -664,7 +664,7 @@ label bounds(652, 250, 50, 16), text("Mode"), fontColour(220,220,220), fontSize(
 
 ; W_center (col 8, x=692)
 rslider channel("W_center"), bounds(692, 29, 70, 70), text("Center"), range(-1, 1, 0, 1, 0.001), trackerColour(180,120,60)
-combobox bounds(692, 102, 85, 18), channel("m_w_center_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(692, 102, 85, 18), channel("m_w_center_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(692, 122, 85, 18), channel("m_w_center_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(692, 142, 50, 16), channel("m_w_center_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 nslider bounds(692, 160, 50, 16), channel("m_w_center_max"), text(""), range(0,1,1,1,0.001), fontSize(13)
@@ -677,7 +677,7 @@ combobox bounds(692, 250, 50, 16), channel("m_w_center_mode"), value(1), text("A
 
 ; W_lopass (col 9, x=784, has labels)
 rslider channel("W_lopass"), bounds(784, 29, 70, 70), text("LP Hz"), range(50, 18000, 6000, 0.4, 1), trackerColour(180,120,60)
-combobox bounds(784, 102, 85, 18), channel("m_w_lp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","Act")
+combobox bounds(784, 102, 85, 18), channel("m_w_lp_src"), value(1), text("None","SLo","SMid","SHi","TLo","TMid","THi","SCtr","TCtr","WL","FFMag","FSMag","FFX","FFY","FSX","FSY","LBPSm","LBPOC","FFTCr","Act")
 combobox bounds(784, 122, 85, 18), channel("m_w_lp_area"), value(1), text("G","UL","UR","LL","LR","Up","Lo","Lf","Rt")
 nslider bounds(784, 142, 50, 16), channel("m_w_lp_min"), text(""), range(0,1,0,1,0.001), fontSize(13)
 label bounds(836, 142, 50, 16), text("Min"), fontColour(220,220,220), fontSize(13)
@@ -835,6 +835,10 @@ opcode GetModSource01, k, kk
         Schan sprintfk "lbp_smooth%s", Ssuffix
     elseif (ksel < 18.5) then
         Schan sprintfk "lbp_orderchaos%s", Ssuffix
+    elseif (ksel < 19.5) then
+        Schan sprintfk "act%s", Ssuffix
+    elseif (ksel < 20.5) then
+        Schan sprintfk "fft_centr%s", Ssuffix
     else
         Schan sprintfk "act%s", Ssuffix
     endif
@@ -890,6 +894,10 @@ opcode GetModSourceName, S, kk
         Schan sprintfk "lbp_smooth%s", Ssuffix
     elseif (ksel < 18.5) then
         Schan sprintfk "lbp_orderchaos%s", Ssuffix
+    elseif (ksel < 19.5) then
+        Schan sprintfk "act%s", Ssuffix
+    elseif (ksel < 20.5) then
+        Schan sprintfk "fft_centr%s", Ssuffix
     else
         Schan sprintfk "act%s", Ssuffix
     endif
@@ -975,22 +983,21 @@ opcode NoiseGrains, aa, kkkkkkkkkk
     kwaveform_sel = giSine
     if (ksource_sel > 2.5) then
         kwaveform_sel = giSlitWave
-        ; Slit wave is a long table, so reduce playback rate.
-        kwavfreq = kwavfreq * 0.001
     elseif (ksource_sel > 1.5) then
         kwaveform_sel = giNoise
     endif
     ktablen_sel tableng kwaveform_sel
+    if (ksource_sel > 2.5) then
+        ; Scale read rate by table length for non-periodic slit-wave playback.
+        kwavfreq = (kwavfreq / max(1, ktablen_sel))*100
+    endif
 
 ; original pitch for each waveform, use if they should be transposed individually
     kwavekey1	= 1
     kwavekey2	= 1
     kwavekey3	= 1
     kwavekey4	= 1
-    asamplepos	= 0
-    if (ksource_sel > 2.5) then
-        asamplepos = limit(ksamplepos, 0, 1) * max(1, ktablen_sel - 1)
-    endif
+    asamplepos	= limit(ksamplepos, 0, 1)
 
 ; "master" grain pitch (transpose for all 4 source waveforms)
     ;kwavfreq	= kwavfreq					; transposition factor (playback speed) of audio inside grains, 
@@ -1564,6 +1571,7 @@ instr 10
     kSlitFrameId init -1
     kSlitChunkCount init 32
     kSlitReceived init 0
+    kfftCentroid init 0
 
     ; Packed pyramid global: s0,s1,s2,t0,t1,t2,centroid_s,centroid_t
 read_pyr_global:
@@ -1728,6 +1736,17 @@ read_act:
         kgoto read_act
     endif
 
+read_slit_fft_centroid:
+    ktr OSClisten gihOsc, "/wave/slit_fft/centroid", "f", kfftCentroid
+    if (ktr == 1) then
+        chnset kfftCentroid, "fft_centr_0"
+        chnset kfftCentroid, "fft_centr_1"
+        chnset kfftCentroid, "fft_centr_2"
+        chnset kfftCentroid, "fft_centr_3"
+        chnset kfftCentroid, "fft_centr_4"
+        kgoto read_slit_fft_centroid
+    endif
+
     ; Packed LBP global + UL/UR/LL/LR
 read_lbp_smooth:
     ktr OSClisten gihOsc, "/wave/lbp/smooth_pack", "fffff", klsg, kls1, kls2, kls3, kls4
@@ -1825,6 +1844,7 @@ read_slit_chunk:
     UpdateMixSums "flow_slow_mag"
     UpdateMixSums "lbp_smooth"
     UpdateMixSums "lbp_orderchaos"
+    UpdateMixSums "fft_centr"
     UpdateMixSums "act"
 endin
 

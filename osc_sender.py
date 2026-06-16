@@ -10,6 +10,19 @@ _slit_frame_id = 0
 
 
 def _extract_center_slit_samples(analysis, sample_count=SLIT_SAMPLE_COUNT):
+    slit_fft = analysis.get("slit_fft_data") if isinstance(analysis, dict) else None
+    waveform = None
+    if isinstance(slit_fft, dict):
+        waveform = slit_fft.get("waveform")
+    if waveform is not None:
+        waveform = np.asarray(waveform, dtype=np.float32).reshape(-1)
+        if waveform.size > 0:
+            if waveform.size == sample_count:
+                return np.clip(waveform, 0.0, 1.0)
+            x_src = np.linspace(0.0, 1.0, waveform.size, dtype=np.float32)
+            x_dst = np.linspace(0.0, 1.0, int(sample_count), dtype=np.float32)
+            return np.clip(np.interp(x_dst, x_src, waveform), 0.0, 1.0)
+
     src = analysis.get("roi_gray") if isinstance(analysis, dict) else None
     if src is None or getattr(src, "size", 0) == 0:
         return None
@@ -64,9 +77,13 @@ def send_wave_data(freqs, direction):
 def send_fused_wave_data(analysis):
     smooth = analysis["smoothed"]
     raw = analysis["raw"]
+    slit_fft = analysis.get("slit_fft_data") or {}
 
     def _scale_a(v):
         return float(np.clip(float(v) * 3.0, 0.0, 1.0))
+
+    def _clip01(v):
+        return float(np.clip(float(v), 0.0, 1.0))
 
     client.send_message("/wave/frequency_hz", float(smooth["wave_frequency_hz"]))
     client.send_message("/wave/bump_size_common", float(smooth["bump_size_common"]))
@@ -75,6 +92,9 @@ def send_fused_wave_data(analysis):
     client.send_message("/wave/movement_speed_norm", float(smooth["movement_speed_norm"]))
     client.send_message("/wave/activity", _scale_a(smooth["activity"]))
     client.send_message("/wave/confidence", float(smooth["confidence"]))
+
+    slit_fft_centroid = _clip01(slit_fft.get("fft_centroid_norm", 0.0))
+    client.send_message("/wave/slit_fft/centroid", slit_fft_centroid)
 
     def _clip(v, lo, hi):
         return float(min(max(float(v), float(lo)), float(hi)))
@@ -210,6 +230,8 @@ def send_fused_wave_data(analysis):
         _scale_a(q_act.get("LR", 0.0)),
     ]
     client.send_message("/wave/activity/pack", act_pack)
+
+    client.send_message("/wave/slit_fft/centroid_pack", [slit_fft_centroid] * 5)
 
     # Central horizontal slit waveform transport: 512 samples in 16-float chunks.
     _send_center_slit_chunks(analysis)

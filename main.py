@@ -589,6 +589,49 @@ def _draw_horizontal_slider(
     value_gain=1.0,
 ):
     x0 = int(x0)
+def _compute_center_slit_fft_data(roi_gray):
+    if roi_gray is None or getattr(roi_gray, "size", 0) == 0:
+        return None
+
+    if len(roi_gray.shape) != 2:
+        return None
+
+    h, w = roi_gray.shape[:2]
+    if h <= 0 or w <= 0:
+        return None
+
+    center_y = h // 2
+    slit = roi_gray[center_y, :].astype(np.float32)
+    if slit.size == 0:
+        return None
+
+    waveform = np.clip(slit / 255.0, 0.0, 1.0)
+    fade_len = max(1, int(round(waveform.size * 0.10)))
+    if fade_len > 0:
+        fade = np.ones(waveform.size, dtype=np.float32)
+        edge = np.linspace(0.0, np.pi * 0.5, fade_len, dtype=np.float32)
+        fade[:fade_len] = np.sin(edge) ** 2
+        fade[-fade_len:] = (np.sin(edge[::-1]) ** 2)
+        waveform = waveform * fade
+    slit_demean = waveform - float(np.mean(waveform))
+    fft_mag = np.abs(np.fft.rfft(slit_demean))
+    fft_mag = fft_mag[1:] if fft_mag.size > 1 else np.asarray([], dtype=np.float32)
+
+    if fft_mag.size > 0:
+        positions = np.linspace(0.0, 1.0, fft_mag.size, dtype=np.float32)
+        magnitude_sum = float(np.sum(fft_mag))
+        centroid_norm = float(np.dot(positions, fft_mag) / max(magnitude_sum, 1e-9))
+    else:
+        centroid_norm = 0.0
+
+    return {
+        "center_y": int(center_y),
+        "waveform": waveform,
+        "fft_magnitude": fft_mag,
+        "fft_centroid_norm": float(np.clip(centroid_norm, 0.0, 1.0)),
+    }
+
+
     y0 = int(y0)
     slider_w = int(max(20, slider_w))
     slider_h = int(max(6, slider_h))
@@ -1249,6 +1292,79 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None, activit
     return out
 
 
+def draw_slit_fft_overlay(frame, slit_fft_data):
+    """Draw the center-slit waveform and its FFT magnitude on the frame.
+
+    Waveform: yellow, zero-line at the slit row, amplitude up to 200 px upward.
+    FFT graph: orange, placed at center-top spanning the middle third of the frame.
+    """
+    if not isinstance(slit_fft_data, dict):
+        return frame
+
+    out = frame.copy()
+    h, w = out.shape[:2]
+    center_y = int(slit_fft_data.get("center_y", h // 2))
+    waveform = np.asarray(slit_fft_data.get("waveform", []), dtype=np.float32)
+    fft_mag = np.asarray(slit_fft_data.get("fft_magnitude", []), dtype=np.float32)
+    slit_len = int(waveform.shape[0])
+
+    max_amp = 200
+    yellow = (0, 255, 255)
+    orange = (0, 165, 255)
+
+    # --- Waveform ---
+    # Draw a dim zero-reference line at the slit row.
+    cv2.line(out, (0, center_y), (w - 1, center_y), (60, 60, 0), 1)
+
+    wv_pts = []
+    for i in range(slit_len):
+        x = int(round(i * (w - 1) / max(slit_len - 1, 1)))
+        y = center_y - int(float(np.clip(waveform[i], 0.0, 1.0)) * max_amp)
+        wv_pts.append([x, y])
+
+    if len(wv_pts) > 1:
+        wv_arr = np.array(wv_pts, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(out, [wv_arr], False, yellow, 1, cv2.LINE_AA)
+
+    # --- FFT ---
+    fft_x0 = w // 3
+    fft_x1 = (2 * w) // 3
+    fft_w_px = fft_x1 - fft_x0
+    fft_h_px = 150
+    fft_top = 10
+
+    n_bins = fft_mag.shape[0]
+
+    fft_peak = float(np.max(fft_mag)) if n_bins > 0 else 1.0
+    if fft_peak < 1e-6:
+        fft_peak = 1.0
+
+    # Semi-transparent background for readability.
+    draw_transparent_rect(out, fft_x0 - 2, fft_top - 2, fft_w_px + 4, fft_h_px + 4, alpha=0.45)
+
+    fft_pts = []
+    for i in range(n_bins):
+        x = fft_x0 + int(round(i * (fft_w_px - 1) / max(n_bins - 1, 1)))
+        norm = float(fft_mag[i]) / fft_peak
+        y = fft_top + fft_h_px - int(norm * fft_h_px)
+        y = int(np.clip(y, fft_top, fft_top + fft_h_px))
+        fft_pts.append([x, y])
+
+    if len(fft_pts) > 1:
+        fft_arr = np.array(fft_pts, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(out, [fft_arr], False, orange, 1, cv2.LINE_AA)
+
+    centroid_norm = float(np.clip(slit_fft_data.get("fft_centroid_norm", 0.0), 0.0, 1.0))
+    centroid_x = fft_x0 + int(round(centroid_norm * (fft_w_px - 1)))
+    centroid_y = fft_top + fft_h_px
+    cv2.circle(out, (centroid_x, centroid_y), 4, (0, 0, 255), -1, cv2.LINE_AA)
+
+    # Baseline for FFT area.
+    cv2.line(out, (fft_x0, fft_top + fft_h_px), (fft_x1, fft_top + fft_h_px), (100, 80, 0), 1)
+
+    return out
+
+
 def make_display_frame(
     base_frame,
     analysis,
@@ -1340,6 +1456,8 @@ def make_display_frame(
             analysis.get("wavelength_data"),
             analysis.get("activity_data"),
         )
+
+    out = draw_slit_fft_overlay(out, analysis.get("slit_fft_data"))
 
     return out
 
@@ -1702,6 +1820,7 @@ def main():
         frame, gray = result
         frame_timestamps.append(time.perf_counter())
         analysis = analyzer.analyze(gray)
+        analysis["slit_fft_data"] = _compute_center_slit_fft_data(analysis.get("roi_gray"))
         last_analysis = analysis
 
         total_ms = max(analysis["timings"].get("total_ms", 0.0), 1e-6)
