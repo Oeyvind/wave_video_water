@@ -1846,6 +1846,13 @@ class WaveAnalyzer:
                 "quadrant_activity_raw": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
                 "quadrant_confidence": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
                 "quadrant_confidence_raw": {"UL": 0.0, "UR": 0.0, "LL": 0.0, "LR": 0.0},
+                "global_components": {"diff": 0.0, "flow": 0.0, "tex": 0.0},
+                "quadrant_components": {
+                    "UL": {"diff": 0.0, "flow": 0.0, "tex": 0.0},
+                    "UR": {"diff": 0.0, "flow": 0.0, "tex": 0.0},
+                    "LL": {"diff": 0.0, "flow": 0.0, "tex": 0.0},
+                    "LR": {"diff": 0.0, "flow": 0.0, "tex": 0.0},
+                },
             }
 
         h, w = gray_for_activity.shape[:2]
@@ -1909,6 +1916,20 @@ class WaveAnalyzer:
             q_smooth[q] = self._smooth_activity_value(self.activity_smoothed, q, q_raw[q], attack=0.35, release=0.12)
             q_conf_smooth[q] = self._smooth_activity_value(self.activity_confidence_smoothed, q, q_conf_raw[q], attack=0.25, release=0.1)
 
+        global_components = {
+            "diff": float(np.clip(diff_global, 0.0, 1.0)),
+            "flow": float(np.clip(flow_global, 0.0, 1.0)),
+            "tex": float(np.clip(tex_global, 0.0, 1.0)),
+        }
+        quadrant_components = {
+            q: {
+                "diff": float(np.clip(diff_quads[q], 0.0, 1.0)),
+                "flow": float(np.clip(flow_quads[q], 0.0, 1.0)),
+                "tex": float(np.clip(tex_quads[q], 0.0, 1.0)),
+            }
+            for q in ("UL", "UR", "LL", "LR")
+        }
+
         return {
             "global_activity": float(g),
             "global_activity_raw": float(g_raw),
@@ -1918,6 +1939,8 @@ class WaveAnalyzer:
             "quadrant_activity_raw": {k: float(v) for k, v in q_raw.items()},
             "quadrant_confidence": {k: float(v) for k, v in q_conf_smooth.items()},
             "quadrant_confidence_raw": {k: float(v) for k, v in q_conf_raw.items()},
+            "global_components": global_components,
+            "quadrant_components": quadrant_components,
         }
 
     def _fuse(self, contours, pyramid, flow, activity_data=None):

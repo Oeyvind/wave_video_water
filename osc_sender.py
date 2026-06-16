@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from pythonosc.udp_client import SimpleUDPClient
 
-client = SimpleUDPClient("127.0.0.1", 8000)
+client = SimpleUDPClient("127.0.0.1", 8100)
 
 SLIT_SAMPLE_COUNT = 512
 SLIT_CHUNK_SIZE = 16
@@ -65,12 +65,15 @@ def send_fused_wave_data(analysis):
     smooth = analysis["smoothed"]
     raw = analysis["raw"]
 
+    def _scale_a(v):
+        return float(np.clip(float(v) * 3.0, 0.0, 1.0))
+
     client.send_message("/wave/frequency_hz", float(smooth["wave_frequency_hz"]))
     client.send_message("/wave/bump_size_common", float(smooth["bump_size_common"]))
     client.send_message("/wave/bump_size_spread", float(smooth["bump_size_spread"]))
     client.send_message("/wave/movement_direction_deg", float(smooth["movement_direction_deg"]))
     client.send_message("/wave/movement_speed_norm", float(smooth["movement_speed_norm"]))
-    client.send_message("/wave/activity", float(smooth["activity"]))
+    client.send_message("/wave/activity", _scale_a(smooth["activity"]))
     client.send_message("/wave/confidence", float(smooth["confidence"]))
 
     def _clip(v, lo, hi):
@@ -161,7 +164,7 @@ def send_fused_wave_data(analysis):
 
     # Optional debug channels for inspectability in downstream tools.
     client.send_message("/wave/raw/frequency_hz", float(raw["wave_frequency_hz"]))
-    client.send_message("/wave/raw/activity", float(raw["activity"]))
+    client.send_message("/wave/raw/activity", _scale_a(raw["activity"]))
 
     # Per-scale and adaptive flow direction channels.
     flow = analysis.get("flow_data", {})
@@ -200,11 +203,11 @@ def send_fused_wave_data(analysis):
     act = analysis.get("activity_data") or {}
     q_act = act.get("quadrant_activity") or {}
     act_pack = [
-        float(act.get("global_activity", 0.0)),
-        float(q_act.get("UL", 0.0)),
-        float(q_act.get("UR", 0.0)),
-        float(q_act.get("LL", 0.0)),
-        float(q_act.get("LR", 0.0)),
+        _scale_a(act.get("global_activity", 0.0)),
+        _scale_a(q_act.get("UL", 0.0)),
+        _scale_a(q_act.get("UR", 0.0)),
+        _scale_a(q_act.get("LL", 0.0)),
+        _scale_a(q_act.get("LR", 0.0)),
     ]
     client.send_message("/wave/activity/pack", act_pack)
 

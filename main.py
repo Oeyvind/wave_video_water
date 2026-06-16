@@ -537,7 +537,18 @@ def _flow_arrow_centers(frame_h, frame_w):
     return centers
 
 
-def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10, color=(80, 170, 255), value_max=300.0):
+def _draw_vertical_slider(
+    frame,
+    x0,
+    y0,
+    value,
+    label,
+    slider_h=68,
+    slider_w=10,
+    color=(80, 170, 255),
+    value_max=300.0,
+    label_font_scale=0.4,
+):
     x0 = int(x0)
     y0 = int(y0)
     slider_h = int(max(24, slider_h))
@@ -553,7 +564,16 @@ def _draw_vertical_slider(frame, x0, y0, value, label, slider_h=68, slider_w=10,
     cv2.rectangle(frame, (x0, y0), (x0 + slider_w, base_y), (140, 140, 140), 1)
     if fill_h > 0:
         cv2.rectangle(frame, (x0, base_y - fill_h), (x0 + slider_w, base_y), color, -1)
-    cv2.putText(frame, label, (x0 - 2, y0 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (225, 225, 225), 1, cv2.LINE_AA)
+    cv2.putText(
+        frame,
+        label,
+        (x0 - 2, y0 - 4),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        float(max(0.2, label_font_scale)),
+        (225, 225, 225),
+        1,
+        cv2.LINE_AA,
+    )
 
 
 def _draw_horizontal_slider(
@@ -1084,6 +1104,8 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None, activit
     ad = activity_data or {}
     q_act = ad.get("quadrant_activity", {}) if isinstance(ad, dict) else {}
     g_act = float(ad.get("global_activity", 0.0)) if isinstance(ad, dict) else 0.0
+    q_dft = ad.get("quadrant_components", {}) if isinstance(ad, dict) else {}
+    g_dft = ad.get("global_components", {}) if isinstance(ad, dict) else {}
 
     centers = _flow_arrow_centers(h, w)
 
@@ -1123,6 +1145,48 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None, activit
         act_h = 68
         act_x = int(np.clip(wl_x - act_w - 8, 10, max(10, w - 10 - act_w)))
         act_y = int(np.clip(wl_y, 24, max(24, h - 24 - act_h)))
+
+        dft_vals = q_dft.get(label, {}) if isinstance(q_dft, dict) else {}
+        dft_w = 7
+        dft_gap = 3
+        dft_group_w = (3 * dft_w) + (2 * dft_gap)
+        dft_x0 = int(np.clip(act_x - 6 - dft_group_w, 10, max(10, w - 10 - dft_group_w)))
+        _draw_vertical_slider(
+            out,
+            dft_x0,
+            act_y,
+            float(dft_vals.get("diff", 0.0)) * 6.0,
+            label="d",
+            slider_h=act_h,
+            slider_w=dft_w,
+            color=(70, 190, 255),
+            value_max=1.0,
+            label_font_scale=0.28,
+        )
+        _draw_vertical_slider(
+            out,
+            dft_x0 + dft_w + dft_gap,
+            act_y,
+            float(dft_vals.get("flow", 0.0)) * 3.0,
+            label="f",
+            slider_h=act_h,
+            slider_w=dft_w,
+            color=(80, 210, 120),
+            value_max=1.0,
+            label_font_scale=0.28,
+        )
+        _draw_vertical_slider(
+            out,
+            dft_x0 + 2 * (dft_w + dft_gap),
+            act_y,
+            float(dft_vals.get("tex", 0.0)) * 1.0,
+            label="t",
+            slider_h=act_h,
+            slider_w=dft_w,
+            color=(210, 130, 250),
+            value_max=1.0,
+            label_font_scale=0.28,
+        )
         _draw_vertical_slider(out, act_x, act_y, act_val * 3.0, label="A", slider_h=act_h, slider_w=act_w, color=(80, 210, 120), value_max=1.0)
         _draw_vertical_slider(out, wl_x, wl_y, wl_val, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
 
@@ -1136,6 +1200,50 @@ def draw_pyramid_texture_bars(frame, pyramid_data, wavelength_data=None, activit
     g_act_h = 68
     g_act_x = int(np.clip(g_wl_x - g_act_w - 8, 10, max(10, w - 10 - g_act_w)))
     g_act_y = int(np.clip(g_wl_y, 24, max(24, h - 24 - g_act_h)))
+
+    g_d = float(g_dft.get("diff", 0.0)) if isinstance(g_dft, dict) else 0.0
+    g_f = float(g_dft.get("flow", 0.0)) if isinstance(g_dft, dict) else 0.0
+    g_t = float(g_dft.get("tex", 0.0)) if isinstance(g_dft, dict) else 0.0
+    g_dft_w = 7
+    g_dft_gap = 3
+    g_dft_group_w = (3 * g_dft_w) + (2 * g_dft_gap)
+    g_dft_x0 = int(np.clip(g_act_x - 6 - g_dft_group_w, 10, max(10, w - 10 - g_dft_group_w)))
+    _draw_vertical_slider(
+        out,
+        g_dft_x0,
+        g_act_y,
+        g_d * 6.0,
+        label="d",
+        slider_h=g_act_h,
+        slider_w=g_dft_w,
+        color=(70, 190, 255),
+        value_max=1.0,
+        label_font_scale=0.28,
+    )
+    _draw_vertical_slider(
+        out,
+        g_dft_x0 + g_dft_w + g_dft_gap,
+        g_act_y,
+        g_f * 3.0,
+        label="f",
+        slider_h=g_act_h,
+        slider_w=g_dft_w,
+        color=(80, 210, 120),
+        value_max=1.0,
+        label_font_scale=0.28,
+    )
+    _draw_vertical_slider(
+        out,
+        g_dft_x0 + 2 * (g_dft_w + g_dft_gap),
+        g_act_y,
+        g_t * 1.0,
+        label="t",
+        slider_h=g_act_h,
+        slider_w=g_dft_w,
+        color=(210, 130, 250),
+        value_max=1.0,
+        label_font_scale=0.28,
+    )
     _draw_vertical_slider(out, g_act_x, g_act_y, g_act * 3.0, label="A", slider_h=g_act_h, slider_w=g_act_w, color=(80, 210, 120), value_max=1.0)
     _draw_vertical_slider(out, g_wl_x, g_wl_y, g_wl, label="WL", slider_h=68, slider_w=10, color=(30, 140, 255), value_max=300.0)
     return out

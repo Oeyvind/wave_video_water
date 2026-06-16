@@ -1,10 +1,6 @@
 * S and T frequencies can be investigated, see chat log for CST
 
 
-* Wave transfer
-  - add waveshape mode
-  - dc block for both modes
-  - lowpass
 
 * Noisegrain:
   - num voices, rdev for wavfreq and grainrate
