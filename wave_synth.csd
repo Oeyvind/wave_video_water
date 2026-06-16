@@ -836,9 +836,9 @@ opcode GetModSource01, k, kk
     elseif (ksel < 18.5) then
         Schan sprintfk "lbp_orderchaos%s", Ssuffix
     elseif (ksel < 19.5) then
-        Schan sprintfk "act%s", Ssuffix
-    elseif (ksel < 20.5) then
         Schan sprintfk "fft_centr%s", Ssuffix
+    elseif (ksel < 20.5) then
+        Schan sprintfk "act%s", Ssuffix
     else
         Schan sprintfk "act%s", Ssuffix
     endif
@@ -895,9 +895,9 @@ opcode GetModSourceName, S, kk
     elseif (ksel < 18.5) then
         Schan sprintfk "lbp_orderchaos%s", Ssuffix
     elseif (ksel < 19.5) then
-        Schan sprintfk "act%s", Ssuffix
-    elseif (ksel < 20.5) then
         Schan sprintfk "fft_centr%s", Ssuffix
+    elseif (ksel < 20.5) then
+        Schan sprintfk "act%s", Ssuffix
     else
         Schan sprintfk "act%s", Ssuffix
     endif
