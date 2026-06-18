@@ -617,6 +617,27 @@ def _compute_center_slit_fft_data(roi_gray):
     fft_mag = np.abs(np.fft.rfft(slit_demean))
     fft_mag = fft_mag[1:] if fft_mag.size > 1 else np.asarray([], dtype=np.float32)
 
+    # Three-band FFT activity using normalized bin positions (DC already removed):
+    # Lo: [0.0, 0.1), Mid: [0.1, 0.3), Hi: [0.3, 1.0].
+    # Scale as fraction of total FFT energy so one dominant band does not
+    # force itself to 100% every frame.
+    band_activity = {"lo": 0.0, "mid": 0.0, "hi": 0.0}
+    if fft_mag.size > 0:
+        pos = np.linspace(0.0, 1.0, fft_mag.size, dtype=np.float32)
+        lo_mask = pos < 0.1
+        mid_mask = (pos >= 0.1) & (pos < 0.3)
+        hi_mask = pos >= 0.3
+
+        lo_val = float(np.sum(fft_mag[lo_mask])) if np.any(lo_mask) else 0.0
+        mid_val = float(np.sum(fft_mag[mid_mask])) if np.any(mid_mask) else 0.0
+        hi_val = float(np.sum(fft_mag[hi_mask])) if np.any(hi_mask) else 0.0
+        band_total = max(lo_val + mid_val + hi_val, 1e-9)
+        band_activity = {
+            "lo": float(np.clip(lo_val / band_total, 0.0, 1.0)),
+            "mid": float(np.clip(mid_val / band_total, 0.0, 1.0)),
+            "hi": float(np.clip(hi_val / band_total, 0.0, 1.0)),
+        }
+
     if fft_mag.size > 0:
         positions = np.linspace(0.0, 1.0, fft_mag.size, dtype=np.float32)
         magnitude_sum = float(np.sum(fft_mag))
@@ -629,6 +650,7 @@ def _compute_center_slit_fft_data(roi_gray):
         "waveform": waveform,
         "fft_magnitude": fft_mag,
         "fft_centroid_norm": float(np.clip(centroid_norm, 0.0, 1.0)),
+        "fft_band_activity": band_activity,
     }
 
 
@@ -1361,6 +1383,31 @@ def draw_slit_fft_overlay(frame, slit_fft_data):
 
     # Baseline for FFT area.
     cv2.line(out, (fft_x0, fft_top + fft_h_px), (fft_x1, fft_top + fft_h_px), (100, 80, 0), 1)
+
+    # Three-band FFT activity bars in the upper-right corner of the FFT area.
+    # Bar spec: height=150 px, width=15 px each.
+    bars = slit_fft_data.get("fft_band_activity", {}) if isinstance(slit_fft_data, dict) else {}
+    bar_h = 150
+    bar_w = 15
+    bar_gap = 4
+    group_w = (bar_w * 3) + (bar_gap * 2)
+    bars_x0 = fft_x1 - group_w - 6
+    bars_y0 = fft_top
+    bar_vals = [
+        float(np.clip(bars.get("lo", 0.0), 0.0, 1.0)),
+        float(np.clip(bars.get("mid", 0.0), 0.0, 1.0)),
+        float(np.clip(bars.get("hi", 0.0), 0.0, 1.0)),
+    ]
+    bar_cols = [(0, 220, 255), (0, 165, 255), (80, 80, 255)]
+
+    draw_transparent_rect(out, bars_x0 - 4, bars_y0 - 4, group_w + 8, bar_h + 8, alpha=0.38)
+    for i, (v, c) in enumerate(zip(bar_vals, bar_cols)):
+        x0 = bars_x0 + i * (bar_w + bar_gap)
+        y1 = bars_y0 + bar_h
+        fill_h = int(round(v * bar_h))
+        cv2.rectangle(out, (x0, bars_y0), (x0 + bar_w, y1), (120, 120, 120), 1)
+        if fill_h > 0:
+            cv2.rectangle(out, (x0, y1 - fill_h), (x0 + bar_w, y1), c, -1)
 
     return out
 

@@ -1,6 +1,6 @@
 * S and T frequencies can be investigated, see chat log for CST
 
-
+* Make quadrants relative to mask if mask present
 
 * Noisegrain:
   - num voices, rdev for wavfreq and grainrate
