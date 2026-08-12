@@ -7,6 +7,7 @@ client = SimpleUDPClient("127.0.0.1", 8100)
 SLIT_SAMPLE_COUNT = 512
 SLIT_CHUNK_SIZE = 16
 _slit_frame_id = 0
+_slit_fft_frame_id = 0
 
 
 def _extract_center_slit_samples(analysis, sample_count=SLIT_SAMPLE_COUNT):
@@ -23,7 +24,7 @@ def _extract_center_slit_samples(analysis, sample_count=SLIT_SAMPLE_COUNT):
             x_dst = np.linspace(0.0, 1.0, int(sample_count), dtype=np.float32)
             return np.clip(np.interp(x_dst, x_src, waveform), 0.0, 1.0)
 
-    src = analysis.get("roi_gray") if isinstance(analysis, dict) else None
+    src = analysis.get("preprocess_display") if isinstance(analysis, dict) else None
     if src is None or getattr(src, "size", 0) == 0:
         return None
 
@@ -66,6 +67,55 @@ def _send_center_slit_chunks(analysis):
         chunk_vals = [float(v) for v in samples[start:end]]
         payload = [frame_id, int(chunk_idx), int(chunk_count)] + chunk_vals
         client.send_message("/slit/chunk", payload)
+
+
+def _extract_center_slit_fft_samples(analysis, sample_count=SLIT_SAMPLE_COUNT):
+    slit_fft = analysis.get("slit_fft_data") if isinstance(analysis, dict) else None
+    if not isinstance(slit_fft, dict):
+        return None
+
+    fft_mag = slit_fft.get("fft_magnitude")
+    if fft_mag is None:
+        return None
+
+    fft_mag = np.asarray(fft_mag, dtype=np.float32).reshape(-1)
+    if fft_mag.size <= 0:
+        return None
+
+    if fft_mag.size != int(sample_count):
+        x_src = np.linspace(0.0, 1.0, fft_mag.size, dtype=np.float32)
+        x_dst = np.linspace(0.0, 1.0, int(sample_count), dtype=np.float32)
+        fft_mag = np.interp(x_dst, x_src, fft_mag).astype(np.float32)
+
+    peak = float(np.max(fft_mag)) if fft_mag.size > 0 else 0.0
+    if peak > 1e-9:
+        fft_mag = fft_mag / peak
+
+    return np.clip(fft_mag, 0.0, 1.0)
+
+
+def _send_center_slit_fft_chunks(analysis):
+    global _slit_fft_frame_id
+
+    samples = _extract_center_slit_fft_samples(analysis, sample_count=SLIT_SAMPLE_COUNT)
+    if samples is None:
+        return
+
+    chunk_size = int(max(1, SLIT_CHUNK_SIZE))
+    total = int(samples.size)
+    if total <= 0 or (total % chunk_size) != 0:
+        return
+
+    chunk_count = total // chunk_size
+    frame_id = int(_slit_fft_frame_id)
+    _slit_fft_frame_id += 1
+
+    for chunk_idx in range(chunk_count):
+        start = chunk_idx * chunk_size
+        end = start + chunk_size
+        chunk_vals = [float(v) for v in samples[start:end]]
+        payload = [frame_id, int(chunk_idx), int(chunk_count)] + chunk_vals
+        client.send_message("/slit_fft/chunk", payload)
 
 def send_wave_data(freqs, direction):
     client.send_message("/wave/freq_low", float(freqs["low"]))
@@ -235,3 +285,5 @@ def send_fused_wave_data(analysis):
 
     # Central horizontal slit waveform transport: 512 samples in 16-float chunks.
     _send_center_slit_chunks(analysis)
+    # Center-slit FFT magnitude transport: 512 bins in 16-float chunks.
+    _send_center_slit_fft_chunks(analysis)

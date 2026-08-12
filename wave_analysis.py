@@ -227,6 +227,7 @@ class WaveAnalyzer:
         self.screen_blend_lut_2x = np.clip(screen_vals_2x * 255.0, 0.0, 255.0).astype(np.uint8).reshape((256, 1))
         self.preprocess_blur_kernel_small = (5, 5)
         self.preprocess_blur_kernel_large = (15, 15)
+        self.preprocess_blur_kernel_xlarge = (45, 45)
 
         # Flow quality controls (independent from main analysis quality).
         self.flow_downscale = 0.5
@@ -242,6 +243,7 @@ class WaveAnalyzer:
         # Optional texture descriptor stages.
         self.enable_lbp_analysis = True
         self.enable_gabor_analysis = False
+        self.enable_wave_shape_detector = False
         # LBP triangle compound mapping parameters.
         self.lbp_order_center = 0.66
         self.lbp_order_width = 0.50
@@ -266,6 +268,31 @@ class WaveAnalyzer:
             "confidence": 0.0,
         }
         self.prev_activity_gray = None
+        self.prev_wave_shape_blur = None
+        self.wave_shape_next_id = 1
+        self.wave_shape_tracks = []
+        self.wave_shape_match_dist_px = 72.0
+        self.wave_shape_max_miss = 6
+        self.wave_shape_min_area_px = 500.0
+        self.wave_shape_max_area_px = 18000.0
+        self.wave_shape_min_aspect = 1.08
+        self.wave_shape_min_confidence = 0.45
+        self.wave_shape_max_count = 10
+        self.wave_shape_flow_min_mag = 0.2
+        self.wave_shape_use_threshold_candidates = True
+        self.wave_shape_expected_width_min_px = 6.0
+        self.wave_shape_expected_width_max_px = 64.0
+        self.wave_shape_height_min_right_px = 110.0
+        self.wave_shape_height_min_left_px = 430.0
+        self.wave_shape_verticality_min = 0.55
+        self.primary_wave_track_id = -1
+        self.primary_wave_center = None
+        self.primary_wave_velocity = np.array([0.0, 0.0], dtype=np.float32)
+        self.primary_wave_bbox = None
+        self.primary_wave_miss = 0
+        self.primary_wave_max_miss = 14
+        self.primary_wave_reacquire_bias = 0.45
+        self.primary_wave_preferred_vx = -3.5
         self.activity_smoothed = {
             "global": 0.0,
             "UL": 0.0,
@@ -418,6 +445,504 @@ class WaveAnalyzer:
 
     def set_mask_points(self, points):
         self.mask_points = points if points and len(points) == 4 else None
+
+    def set_wave_shape_params(self, min_area_px=None, max_area_px=None, min_confidence=None):
+        if min_area_px is not None:
+            self.wave_shape_min_area_px = float(max(50.0, min_area_px))
+        if max_area_px is not None:
+            self.wave_shape_max_area_px = float(max(self.wave_shape_min_area_px + 100.0, max_area_px))
+        if min_confidence is not None:
+            self.wave_shape_min_confidence = float(np.clip(min_confidence, 0.05, 0.95))
+
+    def _shape_detection_confidence(self, motion_norm, aspect, extent, solidity, flow_support=None):
+        elong = float(np.clip((float(aspect) - 1.0) / 3.0, 0.0, 1.0))
+        rectish = float(np.clip((float(extent) - 0.25) / 0.55, 0.0, 1.0))
+        solid = float(np.clip((float(solidity) - 0.5) / 0.5, 0.0, 1.0))
+        motion = float(np.clip(motion_norm, 0.0, 1.0))
+        if flow_support is None:
+            return _clip01((0.52 * motion) + (0.28 * elong) + (0.12 * rectish) + (0.08 * solid))
+        flow_term = float(np.clip(flow_support, 0.0, 1.0))
+        return _clip01((0.42 * motion) + (0.25 * elong) + (0.10 * rectish) + (0.08 * solid) + (0.15 * flow_term))
+
+    @staticmethod
+    def _orientation_invariant_aspect(contour, bbox):
+        x, y, w, h = [int(v) for v in bbox]
+        axis_aspect = float(max(w, h) / max(1.0, min(w, h)))
+
+        rect_aspect = axis_aspect
+        if contour is not None and len(contour) >= 5:
+            (_, _), (rw, rh), _ = cv2.minAreaRect(contour)
+            if rw > 1e-6 and rh > 1e-6:
+                rect_aspect = float(max(rw, rh) / max(1e-6, min(rw, rh)))
+
+        mom_aspect = axis_aspect
+        moms = cv2.moments(contour)
+        m00 = float(moms.get("m00", 0.0))
+        if m00 > 1e-6:
+            mu20 = float(moms.get("mu20", 0.0)) / m00
+            mu02 = float(moms.get("mu02", 0.0)) / m00
+            mu11 = float(moms.get("mu11", 0.0)) / m00
+            cov = np.asarray([[mu20, mu11], [mu11, mu02]], dtype=np.float32)
+            eigvals = np.linalg.eigvalsh(cov)
+            l1 = float(max(eigvals[-1], 1e-6))
+            l2 = float(max(eigvals[0], 1e-6))
+            mom_aspect = float(np.sqrt(l1 / l2))
+
+        return float(max(axis_aspect, rect_aspect, mom_aspect))
+
+    @staticmethod
+    def _major_axis_verticality(contour):
+        if contour is None or len(contour) < 5:
+            return 0.0
+        (_cx, _cy), (rw, rh), angle = cv2.minAreaRect(contour)
+        rw = float(max(rw, 1e-6))
+        rh = float(max(rh, 1e-6))
+        major_angle = float(angle)
+        if rw < rh:
+            major_angle += 90.0
+        rad = np.deg2rad(major_angle)
+        # Absolute y component of major axis direction, 1.0 = vertical.
+        return float(abs(np.sin(rad)))
+
+    def _perspective_height_min(self, cx, frame_w):
+        fw = float(max(2, frame_w))
+        # Left side should admit taller blobs; right side admits smaller blobs.
+        t = float(np.clip(1.0 - (float(cx) / (fw - 1.0)), 0.0, 1.0))
+        return float(
+            self.wave_shape_height_min_right_px
+            + t * (self.wave_shape_height_min_left_px - self.wave_shape_height_min_right_px)
+        )
+
+    def _threshold_wave_contours(self, thresh, mask):
+        if thresh is None or thresh.size == 0:
+            return []
+
+        bw = thresh.copy()
+        if mask is not None and mask.size:
+            bw = cv2.bitwise_and(bw, bw, mask=mask)
+
+        # Connect vertically-elongated wave slits while suppressing isolated speckle.
+        bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, np.ones((3, 11), np.uint8), iterations=1)
+        bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
+
+        contours, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        return contours
+
+    def _wave_shape_flow_support(self, flow_mag, flow_ang, contour, frame_shape):
+        if flow_mag is None or flow_ang is None:
+            return None
+        if contour is None or len(contour) < 3:
+            return None
+
+        img_h, img_w = frame_shape[:2]
+        flow_h, flow_w = flow_mag.shape[:2]
+        if img_h <= 0 or img_w <= 0 or flow_h <= 1 or flow_w <= 1:
+            return None
+
+        scale_x = float(flow_w) / float(img_w)
+        scale_y = float(flow_h) / float(img_h)
+
+        c = contour.reshape(-1, 2).astype(np.float32)
+        c_scaled = np.empty_like(c)
+        c_scaled[:, 0] = c[:, 0] * scale_x
+        c_scaled[:, 1] = c[:, 1] * scale_y
+        c_scaled = np.round(c_scaled).astype(np.int32)
+        c_scaled[:, 0] = np.clip(c_scaled[:, 0], 0, flow_w - 1)
+        c_scaled[:, 1] = np.clip(c_scaled[:, 1], 0, flow_h - 1)
+
+        mask = np.zeros((flow_h, flow_w), dtype=np.uint8)
+        cv2.fillPoly(mask, [c_scaled.reshape(-1, 1, 2)], 255)
+
+        active = (mask > 0) & (flow_mag > float(self.wave_shape_flow_min_mag))
+        if not np.any(active):
+            return {
+                "activity": 0.0,
+                "coherence": 0.0,
+                "support": 0.0,
+            }
+
+        weights = flow_mag[active]
+        theta = flow_ang[active]
+        wsum = float(np.sum(weights)) + 1e-6
+        wx = float(np.sum(np.cos(theta) * weights))
+        wy = float(np.sum(np.sin(theta) * weights))
+        coherence = _clip01(float(np.sqrt(wx * wx + wy * wy) / wsum))
+        activity = _clip01(float(np.mean(weights)) / 8.0)
+
+        # Support favors regions that are both moving and directionally coherent.
+        support = _clip01((0.58 * activity) + (0.42 * coherence))
+        return {
+            "activity": float(activity),
+            "coherence": float(coherence),
+            "support": float(support),
+        }
+
+    def _assign_wave_shape_tracks(self, detections):
+        prev_tracks = [dict(t) for t in self.wave_shape_tracks]
+        used = set()
+        out = []
+
+        for det in detections:
+            cx, cy = det["center"]
+            best = None
+            best_d = self.wave_shape_match_dist_px
+            for i, tr in enumerate(prev_tracks):
+                if i in used:
+                    continue
+                tx, ty = tr["center"]
+                d = float(np.hypot(cx - tx, cy - ty))
+                if d < best_d:
+                    best_d = d
+                    best = i
+
+            if best is None:
+                det["id"] = int(self.wave_shape_next_id)
+                self.wave_shape_next_id += 1
+                det["age"] = 1
+                det["miss"] = 0
+            else:
+                tr = prev_tracks[best]
+                used.add(best)
+                det["id"] = int(tr["id"])
+                det["age"] = int(tr.get("age", 1)) + 1
+                det["miss"] = 0
+            out.append(det)
+
+        # Keep recently lost tracks briefly to reduce ID flicker.
+        for i, tr in enumerate(prev_tracks):
+            if i in used:
+                continue
+            miss = int(tr.get("miss", 0)) + 1
+            if miss <= int(self.wave_shape_max_miss):
+                tr["miss"] = miss
+                out.append(tr)
+
+        # Track table may include recently-lost tracks, but reported detections are active only.
+        self.wave_shape_tracks = out[: int(max(1, self.wave_shape_max_count * 2))]
+
+    @staticmethod
+    def _predict_bounce_1d(pos, vel, lo, hi):
+        p = float(pos + vel)
+        v = float(vel)
+        if hi <= lo:
+            return float(pos), 0.0
+        while p < lo or p > hi:
+            if p < lo:
+                p = lo + (lo - p)
+                v = -v
+            elif p > hi:
+                p = hi - (p - hi)
+                v = -v
+        return float(p), float(v)
+
+    def _predict_primary_wave(self, frame_shape):
+        if self.primary_wave_center is None:
+            return None
+        h, w = frame_shape[:2]
+        px, py = float(self.primary_wave_center[0]), float(self.primary_wave_center[1])
+        vx, vy = float(self.primary_wave_velocity[0]), float(self.primary_wave_velocity[1])
+        nx, nvx = self._predict_bounce_1d(px, vx, 0.0, float(max(1, w - 1)))
+        ny, nvy = self._predict_bounce_1d(py, vy, 0.0, float(max(1, h - 1)))
+        return {
+            "center": (nx, ny),
+            "velocity": np.array([nvx, nvy], dtype=np.float32),
+        }
+
+    def _update_primary_wave_track(self, detections, frame_shape):
+        pred = self._predict_primary_wave(frame_shape)
+        pred_center = pred["center"] if pred is not None else None
+
+        if self.primary_wave_bbox is not None:
+            bw = float(max(1, self.primary_wave_bbox[2]))
+            bh = float(max(1, self.primary_wave_bbox[3]))
+            base_gate = float(np.hypot(bw, bh) * 0.9)
+        else:
+            base_gate = float(self.wave_shape_match_dist_px * 1.8)
+        speed = float(np.hypot(float(self.primary_wave_velocity[0]), float(self.primary_wave_velocity[1])))
+        gate_px = float(max(60.0, min(360.0, base_gate + (speed * 6.0))))
+
+        best = None
+        best_score = -1e9
+        for det in detections:
+            cx, cy = det.get("center", (0.0, 0.0))
+            conf = float(det.get("confidence", 0.0))
+            area = float(det.get("area", 0.0))
+            flow_support = float(det.get("flow_support", 0.0))
+            area_score = float(np.clip(area / max(self.wave_shape_min_area_px * 4.0, 1.0), 0.0, 1.0))
+
+            score = (0.48 * conf) + (0.27 * area_score) + (0.12 * flow_support)
+            if self.primary_wave_track_id >= 0 and int(det.get("id", -1)) == int(self.primary_wave_track_id):
+                score += 0.24
+
+            if pred_center is not None:
+                d = float(np.hypot(float(cx) - float(pred_center[0]), float(cy) - float(pred_center[1])))
+                pred_support = float(np.clip(1.0 - (d / max(gate_px, 1e-6)), 0.0, 1.0))
+                score += (0.60 * pred_support)
+            else:
+                # Cold start: prioritize larger/high-confidence wave-like blobs.
+                score += (self.primary_wave_reacquire_bias * area_score)
+
+            # Enforce roughly constant-speed horizontal progression (right -> left default).
+            if self.primary_wave_center is not None:
+                vx_ref = float(self.primary_wave_velocity[0])
+                if abs(vx_ref) < 0.4:
+                    vx_ref = float(self.primary_wave_preferred_vx)
+                dx = float(cx) - float(self.primary_wave_center[0])
+                dir_bonus = 1.0 if (np.sign(dx) == np.sign(vx_ref)) else 0.0
+                speed_match = float(np.clip(1.0 - (abs(dx - vx_ref) / max(8.0, abs(vx_ref) * 2.6)), 0.0, 1.0))
+                score += (0.14 * dir_bonus) + (0.20 * speed_match)
+
+            if score > best_score:
+                best_score = score
+                best = det
+
+        picked = None
+        if best is not None:
+            if pred_center is not None:
+                dist = float(np.hypot(
+                    float(best["center"][0]) - float(pred_center[0]),
+                    float(best["center"][1]) - float(pred_center[1]),
+                ))
+                pred_ok = dist <= (gate_px * 1.15)
+            else:
+                pred_ok = float(best.get("confidence", 0.0)) >= float(self.wave_shape_min_confidence)
+
+            if pred_ok or float(best.get("confidence", 0.0)) >= float(self.wave_shape_min_confidence + 0.18):
+                picked = best
+
+        if picked is None:
+            self.primary_wave_miss += 1
+            if pred is not None:
+                self.primary_wave_center = (float(pred["center"][0]), float(pred["center"][1]))
+                self.primary_wave_velocity = pred["velocity"] * 0.96
+            if self.primary_wave_miss > int(self.primary_wave_max_miss):
+                self.primary_wave_track_id = -1
+                self.primary_wave_center = None
+                self.primary_wave_velocity = np.array([0.0, 0.0], dtype=np.float32)
+                self.primary_wave_bbox = None
+            return {
+                "id": int(self.primary_wave_track_id),
+                "center": self.primary_wave_center,
+                "bbox": self.primary_wave_bbox,
+                "predicted_center": pred_center,
+                "gate_px": gate_px,
+                "state": "lost",
+            }
+
+        prev_center = self.primary_wave_center
+        new_center = (float(picked["center"][0]), float(picked["center"][1]))
+        if prev_center is not None:
+            raw_v = np.array([
+                float(new_center[0] - float(prev_center[0])),
+                float(new_center[1] - float(prev_center[1])),
+            ], dtype=np.float32)
+            self.primary_wave_velocity = (0.72 * self.primary_wave_velocity) + (0.28 * raw_v)
+        else:
+            self.primary_wave_velocity = np.array([0.0, 0.0], dtype=np.float32)
+
+        self.primary_wave_track_id = int(picked.get("id", -1))
+        self.primary_wave_center = new_center
+        self.primary_wave_bbox = tuple(int(v) for v in picked.get("bbox", (0, 0, 0, 0)))
+        self.primary_wave_miss = 0
+
+        return {
+            "id": int(self.primary_wave_track_id),
+            "center": self.primary_wave_center,
+            "bbox": self.primary_wave_bbox,
+            "predicted_center": pred_center,
+            "gate_px": gate_px,
+            "state": "locked",
+        }
+
+    def _detect_wave_shapes(self, blur, mask, flow_data=None, thresh=None):
+        if blur is None or blur.size == 0:
+            return {
+                "count": 0,
+                "detections": [],
+                "params": {
+                    "min_confidence": float(self.wave_shape_min_confidence),
+                    "min_area_px": float(self.wave_shape_min_area_px),
+                    "max_area_px": float(self.wave_shape_max_area_px),
+                },
+            }
+
+        if self.prev_wave_shape_blur is None or self.prev_wave_shape_blur.shape != blur.shape:
+            self.prev_wave_shape_blur = blur.copy()
+            return {
+                "count": 0,
+                "detections": [],
+                "params": {
+                    "min_confidence": float(self.wave_shape_min_confidence),
+                    "min_area_px": float(self.wave_shape_min_area_px),
+                    "max_area_px": float(self.wave_shape_max_area_px),
+                },
+            }
+
+        diff = cv2.absdiff(blur, self.prev_wave_shape_blur)
+        self.prev_wave_shape_blur = blur.copy()
+        if mask is not None and mask.size:
+            diff = cv2.bitwise_and(diff, diff, mask=mask)
+
+        # Suppress fine swirl noise while preserving larger moving ridges/blobs.
+        diff = cv2.GaussianBlur(diff, (5, 5), 0)
+        otsu_thr, _ = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        p85 = float(np.percentile(diff, 85.0))
+        thr = float(max(otsu_thr, 0.75 * p85))
+        _, bw = cv2.threshold(diff, thr, 255, cv2.THRESH_BINARY)
+        bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8), iterations=1)
+        bw = cv2.morphologyEx(bw, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1)
+
+        flow_mag = None
+        flow_ang = None
+        if self.last_flow is not None:
+            flow_mag, flow_ang = cv2.cartToPolar(self.last_flow[..., 0], self.last_flow[..., 1])
+
+        contours = []
+        if self.wave_shape_use_threshold_candidates and thresh is not None and thresh.size:
+            contours = self._threshold_wave_contours(thresh, mask)
+        if not contours:
+            contours, _ = cv2.findContours(bw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        detections = []
+        frame_h, frame_w = diff.shape[:2]
+        for contour in contours:
+            area = float(cv2.contourArea(contour))
+            if area < float(self.wave_shape_min_area_px) or area > float(self.wave_shape_max_area_px):
+                continue
+
+            x, y, w, h = cv2.boundingRect(contour)
+            if w < 4 or h < 4:
+                continue
+
+            cx_nom = float(x + (w * 0.5))
+            h_min = self._perspective_height_min(cx_nom, frame_w)
+            if float(h) < float(h_min):
+                continue
+
+            if float(w) < float(self.wave_shape_expected_width_min_px) or float(w) > float(self.wave_shape_expected_width_max_px):
+                continue
+
+            aspect = self._orientation_invariant_aspect(contour, (x, y, w, h))
+            if aspect < float(self.wave_shape_min_aspect):
+                continue
+
+            vert = self._major_axis_verticality(contour)
+            if vert < float(self.wave_shape_verticality_min):
+                continue
+
+            rect_area = float(max(1, w * h))
+            extent = float(area / rect_area)
+            hull = cv2.convexHull(contour)
+            hull_area = float(cv2.contourArea(hull)) if hull is not None else area
+            solidity = float(area / max(hull_area, 1e-6))
+
+            roi = diff[y : y + h, x : x + w]
+            if roi.size:
+                roi_mean = float(np.mean(roi) / 255.0)
+                roi_p90 = float(np.percentile(roi, 90.0) / 255.0)
+                motion_norm = float(np.clip((0.55 * roi_mean) + (0.45 * roi_p90), 0.0, 1.0))
+            else:
+                motion_norm = 0.0
+
+            flow_support = self._wave_shape_flow_support(flow_mag, flow_ang, contour, blur.shape)
+            flow_support_val = None if flow_support is None else float(flow_support.get("support", 0.0))
+
+            conf = self._shape_detection_confidence(motion_norm, aspect, extent, solidity, flow_support=flow_support_val)
+
+            # Reject diffuse temporal-noise blobs when flow says there is little coherent motion.
+            if flow_support is not None:
+                flow_activity = float(flow_support.get("activity", 0.0))
+                flow_coh = float(flow_support.get("coherence", 0.0))
+                if flow_activity < 0.02 and flow_coh < 0.15 and motion_norm < 0.20:
+                    continue
+
+            if conf < float(self.wave_shape_min_confidence):
+                continue
+
+            moms = cv2.moments(contour)
+            if moms["m00"] > 1e-6:
+                cx = float(moms["m10"] / moms["m00"])
+                cy = float(moms["m01"] / moms["m00"])
+            else:
+                cx = float(x + (w * 0.5))
+                cy = float(y + (h * 0.5))
+
+            detections.append(
+                {
+                    "center": (cx, cy),
+                    "bbox": (int(x), int(y), int(w), int(h)),
+                    "area": area,
+                    "aspect": float(aspect),
+                    "verticality": float(vert),
+                    "flow_support": float(flow_support.get("support", 0.0)) if flow_support is not None else 0.0,
+                    "flow_coherence": float(flow_support.get("coherence", 0.0)) if flow_support is not None else 0.0,
+                    "confidence": float(conf),
+                }
+            )
+
+        detections.sort(key=lambda d: (d["confidence"], d["area"]), reverse=True)
+        detections = detections[: int(max(1, self.wave_shape_max_count))]
+        self._assign_wave_shape_tracks(detections)
+
+        active = []
+        for tr in self.wave_shape_tracks:
+            if int(tr.get("miss", 0)) > 0:
+                continue
+            active.append(
+                {
+                    "id": int(tr.get("id", -1)),
+                    "center": (float(tr["center"][0]), float(tr["center"][1])),
+                    "bbox": tuple(int(v) for v in tr["bbox"]),
+                    "area": float(tr.get("area", 0.0)),
+                    "confidence": float(tr.get("confidence", 0.0)),
+                }
+            )
+
+        active.sort(key=lambda d: d["id"])
+        primary_wave = self._update_primary_wave_track(active, diff.shape)
+
+        # Enforce locality around predicted trajectory to reduce spurious background blobs.
+        pred_c = primary_wave.get("predicted_center") if isinstance(primary_wave, dict) else None
+        gate_px = float(primary_wave.get("gate_px", self.wave_shape_match_dist_px * 2.0)) if isinstance(primary_wave, dict) else float(self.wave_shape_match_dist_px * 2.0)
+        if pred_c is not None and active:
+            gated = []
+            primary_id = int(primary_wave.get("id", -1))
+            for det in active:
+                did = int(det.get("id", -1))
+                if did == primary_id:
+                    gated.append(det)
+                    continue
+                cx, cy = det.get("center", (0.0, 0.0))
+                d = float(np.hypot(float(cx) - float(pred_c[0]), float(cy) - float(pred_c[1])))
+                conf = float(det.get("confidence", 0.0))
+                if d <= (gate_px * 1.05) or conf >= float(self.wave_shape_min_confidence + 0.30):
+                    gated.append(det)
+            if gated:
+                def _rank(det):
+                    did = int(det.get("id", -1))
+                    cx, cy = det.get("center", (0.0, 0.0))
+                    dist = float(np.hypot(float(cx) - float(pred_c[0]), float(cy) - float(pred_c[1])))
+                    primary_boost = 1 if did == primary_id else 0
+                    return (-primary_boost, dist, -float(det.get("confidence", 0.0)), -float(det.get("area", 0.0)))
+
+                gated.sort(key=_rank)
+                # Keep primary plus a small local support set around trajectory.
+                cap_n = 3 if primary_id >= 0 else int(max(1, self.wave_shape_max_count))
+                active = gated[: int(max(1, min(self.wave_shape_max_count, cap_n)))]
+            else:
+                active = []
+
+        return {
+            "count": int(len(active)),
+            "detections": active,
+            "primary_wave": primary_wave,
+            "params": {
+                "min_confidence": float(self.wave_shape_min_confidence),
+                "min_area_px": float(self.wave_shape_min_area_px),
+                "max_area_px": float(self.wave_shape_max_area_px),
+                "candidate_source": "threshold" if self.wave_shape_use_threshold_candidates else "temporal_diff",
+            },
+        }
 
     @staticmethod
     def _contour_centroid_px(contour):
@@ -609,7 +1134,12 @@ class WaveAnalyzer:
 
         if self.blur_mode > 0:
             t_blur = perf_counter()
-            kernel = self.preprocess_blur_kernel_small if self.blur_mode == 1 else self.preprocess_blur_kernel_large
+            if self.blur_mode == 1:
+                kernel = self.preprocess_blur_kernel_small
+            elif self.blur_mode == 2:
+                kernel = self.preprocess_blur_kernel_large
+            else:
+                kernel = self.preprocess_blur_kernel_xlarge
             blur = cv2.GaussianBlur(gain_img, kernel, 0)
             stage_times["pre_blur_ms"] = (perf_counter() - t_blur) * 1000.0
         else:
@@ -2014,6 +2544,16 @@ class WaveAnalyzer:
         pyramid_data = self._analyze_pyramid_texture(analysis_source)
         timers["pyramid_ms"] = (perf_counter() - t2) * 1000.0
 
+        wave_shapes_data = {
+            "count": 0,
+            "detections": [],
+            "params": {
+                "min_confidence": float(self.wave_shape_min_confidence),
+                "min_area_px": float(self.wave_shape_min_area_px),
+                "max_area_px": float(self.wave_shape_max_area_px),
+            },
+        }
+
         if self.enable_lbp_analysis:
             t_lbp = perf_counter()
             # Compute LBP codes once for the full blur image (the expensive step).
@@ -2083,6 +2623,28 @@ class WaveAnalyzer:
             temporal_centroid_hz=pyramid_data.get("temporal_centroid_hz", 0.0),
         )
         timers["flow_ms"] = (perf_counter() - t3) * 1000.0
+
+        if self.enable_wave_shape_detector:
+            t_ws = perf_counter()
+            wave_shapes_data = self._detect_wave_shapes(blur, mask, flow_data=flow_data, thresh=thresh)
+            timers["wave_shapes_ms"] = (perf_counter() - t_ws) * 1000.0
+        else:
+            wave_shapes_data = {
+                "count": 0,
+                "detections": [],
+                "primary_wave": {
+                    "id": -1,
+                    "center": None,
+                    "bbox": None,
+                    "predicted_center": None,
+                    "gate_px": 0.0,
+                    "state": "off",
+                },
+                "params": {
+                    "disabled": True,
+                },
+            }
+            timers["wave_shapes_ms"] = 0.0
 
         t_act = perf_counter()
         activity_data = self._analyze_activity(blur, pyramid_data, flow_data)
@@ -2179,6 +2741,7 @@ class WaveAnalyzer:
             "flow_data": flow_data,
             "activity_data": activity_data,
             "wavelength_data": wavelength_data,
+            "wave_shapes_data": wave_shapes_data,
             "raw": raw,
             "smoothed": smoothed,
             "timings": timers,

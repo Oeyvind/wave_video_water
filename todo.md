@@ -1,3 +1,8 @@
+* Add spectal synth
+* Add activity on only the D dimension
+* Slit osc variation
+  - use sine oscillator, amp modulate with the slit wave, variable mix
+
 * S and T frequencies can be investigated, see chat log for CST
 
 * Make quadrants relative to mask if mask present
